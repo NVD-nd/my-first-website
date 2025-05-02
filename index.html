@@ -1,0 +1,2258 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KittyMoney AI - Quản Lý Chi Tiêu Thông Minh</title>
+  <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script>
+  <style>
+    :root {
+      --primary-color: #ff85a2;
+      --secondary-color: #ffb6c1;
+      --accent-color: #ffd166;
+      --dark-color: #5e548e;
+      --light-color: #fff5f5;
+      --success-color: #06d6a0;
+      --danger-color: #ef476f;
+      --warning-color: #ffd166;
+      --ai-color: #7e57c2;
+      --info-color: #118ab2;
+    }
+    
+    * {
+      box-sizing: border-box;
+      transition: all 0.3s ease;
+    }
+    
+    body {
+      font-family: 'Comic Neue', cursive;
+      background: linear-gradient(135deg, #fff5f5 0%, #ffecec 100%), 
+                  url('https://i.pinimg.com/originals/2e/cf/1e/2ecf1e5c6cc5cf9168aa7a906a3a6a4c.png') center/cover no-repeat fixed;
+      margin: 0;
+      padding: 20px;
+      min-height: 100vh;
+      color: #333;
+    }
+    
+    h1, h2, h3 {
+      color: var(--dark-color);
+      font-weight: 700;
+      text-shadow: 2px 2px 0px rgba(255,255,255,0.8);
+    }
+    
+    .container, .auth-container {
+      max-width: 1000px;
+      margin: 20px auto;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      border: 3px dashed var(--primary-color);
+      position: relative;
+      overflow: hidden;
+      backdrop-filter: blur(5px);
+    }
+    
+    .container::before, .auth-container::before {
+      content: "";
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 60px;
+      height: 60px;
+      background: url('https://clipart-library.com/images/8ixKbxj8T.png') center/contain no-repeat;
+      opacity: 0.15;
+    }
+    
+    input, select, button, textarea {
+      width: 100%;
+      padding: 12px 15px;
+      margin-top: 10px;
+      margin-bottom: 20px;
+      border: 2px solid var(--primary-color);
+      border-radius: 15px;
+      font-family: 'Comic Neue', cursive;
+      font-size: 16px;
+      background-color: var(--light-color);
+    }
+    
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--dark-color);
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(94, 84, 142, 0.2);
+      transform: scale(1.01);
+    }
+    
+    button {
+      cursor: pointer;
+      font-weight: 700;
+    }
+    
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    /* Toast Notification */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1000;
+    }
+    
+    .toast {
+      padding: 15px 20px;
+      margin-bottom: 10px;
+      border-radius: 10px;
+      color: white;
+      font-weight: bold;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      animation: fadeIn 0.3s, fadeOut 0.5s 2.5s;
+      display: flex;
+      align-items: center;
+    }
+    
+    .toast i {
+      margin-right: 10px;
+      font-size: 20px;
+    }
+    
+    .toast-success {
+      background-color: var(--success-color);
+    }
+    
+    .toast-error {
+      background-color: var(--danger-color);
+    }
+    
+    .toast-warning {
+      background-color: var(--warning-color);
+      color: #333;
+    }
+    
+    .toast-info {
+      background-color: var(--info-color);
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateX(100px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    
+    @keyframes fadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+    
+    /* AI Panel Styles */
+    .ai-panel {
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      margin: 20px 0;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      border: 2px solid var(--ai-color);
+    }
+    
+    .ai-panel h3 {
+      color: var(--ai-color);
+      margin-top: 0;
+      display: flex;
+      align-items: center;
+    }
+    
+    #ai-chat-container {
+      height: 200px;
+      overflow-y: auto;
+      margin-bottom: 15px;
+      padding: 10px;
+      background: #f9f9f9;
+      border-radius: 10px;
+      border: 1px solid #eee;
+    }
+    
+    .user-query {
+      text-align: right;
+      margin: 5px 0;
+      color: var(--dark-color);
+      background: #f0f0f0;
+      padding: 8px 12px;
+      border-radius: 10px;
+      display: inline-block;
+      max-width: 80%;
+      margin-left: 20%;
+      position: relative;
+    }
+    
+    .user-query::before {
+      content: "";
+      position: absolute;
+      right: -10px;
+      top: 10px;
+      width: 0;
+      height: 0;
+      border-top: 10px solid transparent;
+      border-bottom: 10px solid transparent;
+      border-left: 10px solid #f0f0f0;
+    }
+    
+    .ai-response {
+      text-align: left;
+      margin: 5px 0;
+      color: var(--ai-color);
+      font-weight: bold;
+      background: #f5f0ff;
+      padding: 8px 12px;
+      border-radius: 10px;
+      display: inline-block;
+      max-width: 80%;
+      position: relative;
+    }
+    
+    .ai-response::before {
+      content: "";
+      position: absolute;
+      left: -10px;
+      top: 10px;
+      width: 0;
+      height: 0;
+      border-top: 10px solid transparent;
+      border-bottom: 10px solid transparent;
+      border-right: 10px solid #f5f0ff;
+    }
+    
+    #ai-query-input {
+      width: calc(100% - 100px);
+      margin-right: 10px;
+      display: inline-block;
+    }
+    
+    .ai-suggestion {
+      background: #f0e8ff;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 10px;
+      border-left: 4px solid var(--ai-color);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .ai-suggestion:hover {
+      background: #e2d6ff;
+      transform: translateX(5px);
+    }
+    
+    .ai-loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(126, 87, 194, 0.3);
+      border-radius: 50%;
+      border-top-color: var(--ai-color);
+      animation: spin 1s ease-in-out infinite;
+      margin-left: 10px;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    /* Chart Container */
+    .chart-container {
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      margin: 20px 0;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+      border: 2px solid var(--primary-color);
+      position: relative;
+    }
+    
+    .chart-tabs {
+      display: flex;
+      margin-bottom: 15px;
+      border-bottom: 2px solid #eee;
+    }
+    
+    .chart-tab {
+      padding: 8px 15px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      margin-right: 10px;
+      font-weight: bold;
+      color: var(--dark-color);
+    }
+    
+    .chart-tab.active {
+      border-bottom-color: var(--primary-color);
+      color: var(--primary-color);
+    }
+    
+    /* Filter Section */
+    .filter-section {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    
+    .filter-section input, .filter-section select {
+      flex: 1;
+      min-width: 150px;
+    }
+    
+    /* Transaction Table */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: white;
+      border-radius: 15px;
+      overflow: hidden;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      border: 2px solid var(--primary-color);
+    }
+    
+    th, td {
+      border: 1px solid var(--primary-color);
+      padding: 12px 15px;
+      text-align: left;
+    }
+    
+    th {
+      background-color: var(--primary-color);
+      color: white;
+      font-weight: 700;
+    }
+    
+    tr:nth-child(even) {
+      background-color: #fff5f5;
+    }
+    
+    tr:hover {
+      background-color: #ffecec;
+      transform: scale(1.01);
+    }
+    
+    /* Category Tags */
+    .category-tag {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: bold;
+      background: var(--secondary-color);
+      color: white;
+    }
+    
+    /* Buttons */
+    .auth-btn {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 15px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 16px;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .auth-btn:hover {
+      background-color: #ff6b8b;
+      transform: translateY(-2px) scale(1.02);
+    }
+    
+    .delete-btn {
+      background-color: var(--danger-color);
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    
+    .delete-btn:hover {
+      background-color: #d43d63;
+      transform: scale(1.05);
+    }
+    
+    .edit-btn {
+      background-color: var(--info-color);
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 700;
+      margin-right: 5px;
+    }
+    
+    .edit-btn:hover {
+      background-color: #0e7a9c;
+      transform: scale(1.05);
+    }
+    
+    .logout-btn {
+      background-color: var(--danger-color);
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    
+    .logout-btn:hover {
+      background-color: #d43d63;
+      transform: scale(1.05);
+    }
+    
+    .export-btn {
+      background-color: var(--success-color);
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 700;
+      margin-left: 10px;
+    }
+    
+    .export-btn:hover {
+      background-color: #05b989;
+      transform: scale(1.05);
+    }
+    
+    /* Summary Cards */
+    .summary-cards {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    
+    .summary-card {
+      flex: 1;
+      min-width: 200px;
+      background: white;
+      padding: 15px;
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+      border: 2px solid var(--primary-color);
+      text-align: center;
+    }
+    
+    .summary-card h3 {
+      margin-top: 0;
+      color: var(--dark-color);
+    }
+    
+    .summary-card .amount {
+      font-size: 24px;
+      font-weight: bold;
+    }
+    
+    .income-card .amount {
+      color: var(--success-color);
+    }
+    
+    .expense-card .amount {
+      color: var(--danger-color);
+    }
+    
+    .balance-card .amount {
+      color: var(--dark-color);
+    }
+    
+    /* Kitty Coin Icon */
+    .kitty-coin {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      background: url('https://www.freepnglogos.com/uploads/hello-kitty-png/hello-kitty-birthday-png-transparent-image-6.png') center/contain no-repeat;
+      vertical-align: middle;
+      margin-right: 5px;
+    }
+    
+    /* App Header */
+    .app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      overflow: auto;
+    }
+    
+    .modal-content {
+      background-color: white;
+      margin: 10% auto;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      max-width: 500px;
+      position: relative;
+      animation: modalFadeIn 0.3s;
+    }
+    
+    .close-modal {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      font-size: 24px;
+      font-weight: bold;
+      color: var(--danger-color);
+      cursor: pointer;
+    }
+    
+    @keyframes modalFadeIn {
+      from { opacity: 0; transform: translateY(-50px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Budget Section */
+    .budget-section {
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      margin: 20px 0;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+      border: 2px solid var(--success-color);
+    }
+    
+    .budget-cards {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+    
+    .budget-card {
+      flex: 1;
+      min-width: 200px;
+      background: white;
+      padding: 15px;
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+      border: 2px solid var(--info-color);
+      text-align: center;
+    }
+    
+    .budget-card h4 {
+      margin-top: 0;
+      color: var(--dark-color);
+    }
+    
+    .budget-card .progress-container {
+      height: 20px;
+      background: #eee;
+      border-radius: 10px;
+      margin: 10px 0;
+      overflow: hidden;
+    }
+    
+    .budget-card .progress-bar {
+      height: 100%;
+      background: var(--success-color);
+      border-radius: 10px;
+      transition: width 0.5s ease;
+    }
+    
+    .budget-card .progress-danger {
+      background: var(--danger-color);
+    }
+    
+    .budget-card .progress-warning {
+      background: var(--warning-color);
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .container, .auth-container {
+        padding: 20px;
+        margin: 10px;
+      }
+      
+      input, select, button {
+        padding: 10px 12px;
+      }
+      
+      .summary-cards, .budget-cards {
+        flex-direction: column;
+      }
+      
+      .filter-section {
+        flex-direction: column;
+      }
+      
+      .user-query, .ai-response {
+        max-width: 90%;
+        margin-left: 10%;
+      }
+      
+      .modal-content {
+        margin: 20% auto;
+        width: 90%;
+      }
+    }
+    
+    /* Dark Mode Toggle */
+    .dark-mode-toggle {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--dark-color);
+      color: white;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+      z-index: 999;
+    }
+    
+    /* Dark Mode Styles */
+    body.dark-mode {
+      background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
+      color: #f0f0f0;
+    }
+    
+    body.dark-mode .container,
+    body.dark-mode .auth-container,
+    body.dark-mode .ai-panel,
+    body.dark-mode .chart-container,
+    body.dark-mode .summary-card,
+    body.dark-mode .budget-card,
+    body.dark-mode .modal-content,
+    body.dark-mode table {
+      background: #333;
+      color: #f0f0f0;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+    
+    body.dark-mode h1,
+    body.dark-mode h2,
+    body.dark-mode h3,
+    body.dark-mode h4 {
+      color: #ff85a2;
+    }
+    
+    body.dark-mode input,
+    body.dark-mode select,
+    body.dark-mode textarea {
+      background: #444;
+      color: #f0f0f0;
+      border-color: #5e548e;
+    }
+    
+    body.dark-mode #ai-chat-container,
+    body.dark-mode tr:nth-child(even) {
+      background: #444;
+    }
+    
+    body.dark-mode .ai-response {
+      background: #3a2d5e;
+      color: #d1c4e9;
+    }
+    
+    body.dark-mode .user-query {
+      background: #4a4a4a;
+      color: #f0f0f0;
+    }
+    
+    body.dark-mode .ai-suggestion {
+      background: #3a2d5e;
+      color: #d1c4e9;
+    }
+    
+    body.dark-mode .ai-suggestion:hover {
+      background: #4a3a6e;
+    }
+    
+    body.dark-mode tr:hover {
+      background: #4a4a4a;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Toast Notification Container -->
+<div id="toast-container" class="toast-container"></div>
+
+<!-- Dark Mode Toggle -->
+<div class="dark-mode-toggle" onclick="toggleDarkMode()">
+  <i class="fas fa-moon" id="dark-mode-icon"></i>
+</div>
+
+<!-- Language Selector -->
+<select id="language-select" class="language-select" onchange="changeLanguage()">
+  <option value="vi">Tiếng Việt</option>
+  <option value="en">English</option>
+  <option value="zh">繁體中文</option>
+  <option value="fr">Français</option>
+  <option value="es">Español</option>
+</select>
+
+<!-- Auth Section -->
+<div id="auth-section" class="auth-container animate__animated animate__fadeIn">
+  <h2 id="login-title">Đăng Nhập</h2>
+  <input type="text" id="username" placeholder="Tên người dùng" autofocus />
+  <input type="password" id="password" placeholder="Mật khẩu" />
+  <button class="auth-btn" onclick="login()" id="login-btn">
+    <span id="login-btn-text">Đăng Nhập</span> <span class="kitty-coin"></span>
+  </button>
+  <div class="switch-auth">
+    <span id="register-link">Chưa có tài khoản? </span>
+    <a href="#" onclick="showRegister()" id="register-link-text">Đăng ký <span class="kitty-coin"></span></a>
+  </div>
+</div>
+
+<!-- Register Section -->
+<div id="register-section" class="auth-container animate__animated animate__fadeIn" style="display: none;">
+  <h2 id="register-title">Đăng Ký</h2>
+  <input type="text" id="new-username" placeholder="Tên người dùng" autofocus />
+  <input type="password" id="new-password" placeholder="Mật khẩu" />
+  <button class="auth-btn" onclick="register()" id="register-btn">
+    <span id="register-btn-text">Đăng Ký</span> <span class="kitty-coin"></span>
+  </button>
+  <div class="switch-auth">
+    <span id="login-link">Đã có tài khoản? </span>
+    <a href="#" onclick="showLogin()" id="login-link-text">Đăng nhập <span class="kitty-coin"></span></a>
+  </div>
+</div>
+
+<!-- Main App Section -->
+<div id="app-section" class="container animate__animated animate__fadeIn" style="display: none;">
+  <div class="app-header">
+    <h1 id="app-title">KittyMoney AI <span class="kitty-coin"></span></h1>
+    <button class="logout-btn" onclick="logout()" id="logout-btn">Đăng Xuất <span class="kitty-coin"></span></button>
+  </div>
+  
+  <!-- Summary Cards -->
+  <div class="summary-cards">
+    <div class="summary-card income-card">
+      <h3 id="income-title">Tổng Thu</h3>
+      <div class="amount" id="total-income">0</div>
+    </div>
+    <div class="summary-card expense-card">
+      <h3 id="expense-title">Tổng Chi</h3>
+      <div class="amount" id="total-expense">0</div>
+    </div>
+    <div class="summary-card balance-card">
+      <h3 id="balance-title">Số Dư</h3>
+      <div class="amount" id="total-balance">0</div>
+    </div>
+  </div>
+  
+  <!-- Budget Section -->
+  <div class="budget-section animate__animated animate__fadeInUp">
+    <h3><i class="fas fa-piggy-bank"></i> Quản Lý Ngân Sách</h3>
+    <div class="filter-section">
+      <select id="budget-category">
+        <option value="food" id="budget-category-food">Ăn uống</option>
+        <option value="shopping" id="budget-category-shopping">Mua sắm</option>
+        <option value="transport" id="budget-category-transport">Đi lại</option>
+        <option value="entertainment" id="budget-category-entertainment">Giải trí</option>
+      </select>
+      <input type="number" id="budget-amount" placeholder="Số tiền ngân sách">
+      <button onclick="setBudget()" id="set-budget-btn">Đặt Ngân Sách</button>
+    </div>
+    <div class="budget-cards" id="budget-cards-container">
+      <!-- Budget cards will be added here -->
+    </div>
+  </div>
+  
+  <!-- Chart Section -->
+  <div class="chart-container animate__animated animate__fadeInUp">
+    <div class="chart-tabs">
+      <div class="chart-tab active" onclick="changeChartType('bar')" id="bar-chart-tab">Biểu Đồ Cột</div>
+      <div class="chart-tab" onclick="changeChartType('pie')" id="pie-chart-tab">Biểu Đồ Tròn</div>
+      <div class="chart-tab" onclick="changeChartType('line')" id="line-chart-tab">Biểu Đồ Đường</div>
+    </div>
+    <h3 id="chart-title">Thống Kê Chi Tiêu</h3>
+    <canvas id="stats-chart"></canvas>
+  </div>
+  
+  <!-- AI Assistant Panel -->
+  <div class="ai-panel animate__animated animate__fadeInUp">
+    <h3><i class="fas fa-robot"></i> Trợ Lý Tài Chính AI</h3>
+    <div id="ai-chat-container">
+      <div class="ai-response">Kitty: Xin chào! Tôi có thể giúp gì cho tài chính của bạn hôm nay? 😊</div>
+    </div>
+    <div class="filter-section">
+      <input type="text" id="ai-query-input" placeholder="Hỏi trợ lý của bạn..." />
+      <button onclick="askAI()" id="ai-submit-btn"><i class="fas fa-paper-plane"></i> Gửi</button>
+    </div>
+  </div>
+  
+  <!-- AI Suggestions -->
+  <div class="ai-insights animate__animated animate__fadeInUp">
+    <h3><i class="fas fa-lightbulb"></i> Gợi ý Thông Minh</h3>
+    <div id="ai-suggestions">
+      <div class="ai-suggestion" onclick="askAI('Tôi nên tiết kiệm ở đâu?')">💡 Gợi ý tiết kiệm</div>
+      <div class="ai-suggestion" onclick="askAI('Tôi đã chi bao nhiêu cho ăn uống?')">🍔 Phân tích chi tiêu ăn uống</div>
+      <div class="ai-suggestion" onclick="askAI('Danh mục nào tôi chi nhiều nhất?')">📊 Xem chi tiêu theo danh mục</div>
+    </div>
+  </div>
+
+  <!-- Transaction Form -->
+  <div class="transaction-form animate__animated animate__fadeInUp">
+    <h2 class="form-title" id="add-transaction-title">Thêm Giao Dịch <span class="kitty-coin"></span></h2>
+    <div class="filter-section">
+      <input type="text" id="description" placeholder="Mô tả" autofocus>
+      <input type="number" id="amount" placeholder="Số tiền">
+      <select id="category">
+        <option value="other" id="category-other">Khác</option>
+        <option value="food" id="category-food">Ăn uống</option>
+        <option value="shopping" id="category-shopping">Mua sắm</option>
+        <option value="transport" id="category-transport">Đi lại</option>
+        <option value="entertainment" id="category-entertainment">Giải trí</option>
+        <option value="salary" id="category-salary">Lương</option>
+        <option value="investment" id="category-investment">Đầu tư</option>
+      </select>
+      <select id="type">
+        <option value="income" id="income-option">Thu nhập</option>
+        <option value="expense" id="expense-option">Chi tiêu</option>
+      </select>
+      <input type="date" id="date">
+    </div>
+    <button onclick="addTransaction()" id="add-btn"><i class="fas fa-plus-circle"></i> Thêm giao dịch <span class="kitty-coin"></span></button>
+  </div>
+
+  <!-- Filter Section -->
+  <div class="filter-section">
+    <input type="text" id="search-input" placeholder="Tìm kiếm...">
+    <select id="filter-type">
+      <option value="all" id="filter-all">Tất cả</option>
+      <option value="income" id="filter-income">Thu nhập</option>
+      <option value="expense" id="filter-expense">Chi tiêu</option>
+    </select>
+    <select id="filter-category">
+      <option value="all" id="filter-category-all">Tất cả danh mục</option>
+      <option value="food" id="filter-category-food">Ăn uống</option>
+      <option value="shopping" id="filter-category-shopping">Mua sắm</option>
+      <option value="transport" id="filter-category-transport">Đi lại</option>
+      <option value="entertainment" id="filter-category-entertainment">Giải trí</option>
+      <option value="salary" id="filter-category-salary">Lương</option>
+      <option value="investment" id="filter-category-investment">Đầu tư</option>
+      <option value="other" id="filter-category-other">Khác</option>
+    </select>
+    <input type="month" id="filter-month">
+    <button class="export-btn" onclick="exportToCSV()" id="export-btn"><i class="fas fa-file-export"></i> Xuất CSV <span class="kitty-coin"></span></button>
+  </div>
+
+  <!-- Transaction Table -->
+  <h2 id="history-title">Lịch Sử Giao Dịch <span class="kitty-coin"></span></h2>
+  <table id="transaction-table">
+    <thead>
+      <tr>
+        <th id="th-date">Ngày</th>
+        <th id="th-description">Mô tả</th>
+        <th id="th-category">Danh mục</th>
+        <th id="th-type">Loại</th>
+        <th id="th-amount">Số tiền</th>
+        <th id="th-action">Hành động</th>
+      </tr>
+    </thead>
+    <tbody id="transaction-body">
+      <!-- Transactions will be added here -->
+    </tbody>
+  </table>
+</div>
+
+<!-- Edit Transaction Modal -->
+<div id="edit-modal" class="modal">
+  <div class="modal-content">
+    <span class="close-modal" onclick="closeModal()">&times;</span>
+    <h2 id="edit-title">Chỉnh Sửa Giao Dịch</h2>
+    <input type="hidden" id="edit-id">
+    <input type="text" id="edit-description" placeholder="Mô tả">
+    <input type="number" id="edit-amount" placeholder="Số tiền">
+    <select id="edit-category">
+      <option value="other">Khác</option>
+      <option value="food">Ăn uống</option>
+      <option value="shopping">Mua sắm</option>
+      <option value="transport">Đi lại</option>
+      <option value="entertainment">Giải trí</option>
+      <option value="salary">Lương</option>
+      <option value="investment">Đầu tư</option>
+    </select>
+    <select id="edit-type">
+      <option value="income">Thu nhập</option>
+      <option value="expense">Chi tiêu</option>
+    </select>
+    <input type="date" id="edit-date">
+    <button onclick="saveEditedTransaction()" id="save-edit-btn"><i class="fas fa-save"></i> Lưu Thay Đổi</button>
+  </div>
+</div>
+
+<script>
+  // ==================== CONSTANTS & INITIALIZATION ====================
+  const translations = {
+    vi: { 
+      login: "Đăng Nhập", 
+      register: "Đăng Ký", 
+      username: "Tên người dùng", 
+      password: "Mật khẩu", 
+      addTransaction: "Thêm giao dịch", 
+      description: "Mô tả", 
+      amount: "Số tiền", 
+      date: "Ngày", 
+      type: "Loại", 
+      category: "Danh mục",
+      income: "Thu nhập", 
+      expense: "Chi tiêu", 
+      transactionHistory: "Lịch sử giao dịch", 
+      delete: "Xoá", 
+      edit: "Sửa",
+      confirmDelete: "Bạn có chắc muốn xoá giao dịch này không?", 
+      successRegister: "Đăng ký thành công! Bạn có thể đăng nhập ngay.", 
+      userExists: "Tài khoản đã tồn tại!", 
+      wrongCredentials: "Sai tên người dùng hoặc mật khẩu!", 
+      hasAccount: "Đã có tài khoản?", 
+      noAccount: "Chưa có tài khoản?", 
+      loginSuccess: "Đăng nhập thành công", 
+      registerLink: "Đăng ký",
+      loginLink: "Đăng nhập",
+      noTransactions: "Không có giao dịch nào",
+      logout: "Đăng xuất",
+      appTitle: "KittyMoney AI",
+      totalIncome: "Tổng Thu",
+      totalExpense: "Tổng Chi",
+      balance: "Số Dư",
+      chartTitle: "Thống Kê Chi Tiêu",
+      search: "Tìm kiếm...",
+      all: "Tất cả",
+      allCategories: "Tất cả danh mục",
+      exportCSV: "Xuất CSV",
+      editTransaction: "Chỉnh sửa giao dịch",
+      saveChanges: "Lưu thay đổi",
+      budgetManagement: "Quản lý ngân sách",
+      setBudget: "Đặt ngân sách",
+      budgetFor: "Ngân sách cho",
+      spent: "Đã chi",
+      remaining: "Còn lại",
+      exceeded: "Vượt quá",
+      barChart: "Biểu đồ cột",
+      pieChart: "Biểu đồ tròn",
+      lineChart: "Biểu đồ đường",
+      categories: {
+        food: "Ăn uống",
+        shopping: "Mua sắm",
+        transport: "Đi lại",
+        entertainment: "Giải trí",
+        salary: "Lương",
+        investment: "Đầu tư",
+        other: "Khác"
+      },
+      aiSuggestions: {
+        savings: "Gợi ý tiết kiệm",
+        foodAnalysis: "Phân tích chi tiêu ăn uống",
+        categoryAnalysis: "Xem chi tiêu theo danh mục"
+      }
+    },
+    en: { 
+      login: "Login", 
+      register: "Register", 
+      username: "Username", 
+      password: "Password", 
+      addTransaction: "Add Transaction", 
+      description: "Description", 
+      amount: "Amount", 
+      date: "Date", 
+      type: "Type", 
+      category: "Category",
+      income: "Income", 
+      expense: "Expense", 
+      transactionHistory: "Transaction History", 
+      delete: "Delete", 
+      edit: "Edit",
+      confirmDelete: "Are you sure you want to delete this transaction?", 
+      successRegister: "Registration successful! You can now log in.", 
+      userExists: "User already exists!", 
+      wrongCredentials: "Wrong username or password!", 
+      hasAccount: "Already have an account?", 
+      noAccount: "Don't have an account?", 
+      loginSuccess: "Login successful",
+      registerLink: "Register",
+      loginLink: "Login",
+      noTransactions: "No transactions found",
+      logout: "Logout",
+      appTitle: "KittyMoney AI",
+      totalIncome: "Total Income",
+      totalExpense: "Total Expense",
+      balance: "Balance",
+      chartTitle: "Expense Statistics",
+      search: "Search...",
+      all: "All",
+      allCategories: "All Categories",
+      exportCSV: "Export CSV",
+      editTransaction: "Edit Transaction",
+      saveChanges: "Save Changes",
+      budgetManagement: "Budget Management",
+      setBudget: "Set Budget",
+      budgetFor: "Budget for",
+      spent: "Spent",
+      remaining: "Remaining",
+      exceeded: "Exceeded",
+      barChart: "Bar Chart",
+      pieChart: "Pie Chart",
+      lineChart: "Line Chart",
+      categories: {
+        food: "Food",
+        shopping: "Shopping",
+        transport: "Transport",
+        entertainment: "Entertainment",
+        salary: "Salary",
+        investment: "Investment",
+        other: "Other"
+      },
+      aiSuggestions: {
+        savings: "Savings suggestions",
+        foodAnalysis: "Food spending analysis",
+        categoryAnalysis: "View spending by category"
+      }
+    },
+    zh: { 
+      login: "登入", 
+      register: "註冊", 
+      username: "使用者名稱", 
+      password: "密碼", 
+      addTransaction: "新增交易", 
+      description: "描述", 
+      amount: "金額", 
+      date: "日期", 
+      type: "類型", 
+      category: "類別",
+      income: "收入", 
+      expense: "支出", 
+      transactionHistory: "交易記錄", 
+      delete: "刪除", 
+      edit: "編輯",
+      confirmDelete: "您確定要刪除此交易嗎？", 
+      successRegister: "註冊成功！您現在可以登入。", 
+      userExists: "使用者已存在！", 
+      wrongCredentials: "使用者名稱或密碼錯誤！", 
+      hasAccount: "已經有帳號？", 
+      noAccount: "還沒有帳號？", 
+      loginSuccess: "登入成功",
+      registerLink: "註冊",
+      loginLink: "登入",
+      noTransactions: "沒有交易記錄",
+      logout: "登出",
+      appTitle: "KittyMoney AI",
+      totalIncome: "總收入",
+      totalExpense: "總支出",
+      balance: "餘額",
+      chartTitle: "支出統計",
+      search: "搜尋...",
+      all: "全部",
+      allCategories: "所有類別",
+      exportCSV: "匯出 CSV",
+      editTransaction: "編輯交易",
+      saveChanges: "保存更改",
+      budgetManagement: "預算管理",
+      setBudget: "設置預算",
+      budgetFor: "預算為",
+      spent: "已花費",
+      remaining: "剩餘",
+      exceeded: "超出",
+      barChart: "柱狀圖",
+      pieChart: "餅圖",
+      lineChart: "折線圖",
+      categories: {
+        food: "飲食",
+        shopping: "購物",
+        transport: "交通",
+        entertainment: "娛樂",
+        salary: "薪水",
+        investment: "投資",
+        other: "其他"
+      },
+      aiSuggestions: {
+        savings: "節省建議",
+        foodAnalysis: "飲食支出分析",
+        categoryAnalysis: "按類別查看支出"
+      }
+    },
+    fr: { 
+      login: "Connexion", 
+      register: "S'inscrire", 
+      username: "Nom d'utilisateur", 
+      password: "Mot de passe", 
+      addTransaction: "Ajouter une transaction", 
+      description: "Description", 
+      amount: "Montant", 
+      date: "Date", 
+      type: "Type", 
+      category: "Catégorie",
+      income: "Revenu", 
+      expense: "Dépense", 
+      transactionHistory: "Historique des transactions", 
+      delete: "Supprimer", 
+      edit: "Modifier",
+      confirmDelete: "Êtes-vous sûr de vouloir supprimer cette transaction ?", 
+      successRegister: "Inscription réussie ! Vous pouvez maintenant vous connecter.", 
+      userExists: "L'utilisateur existe déjà !", 
+      wrongCredentials: "Nom d'utilisateur ou mot de passe incorrect !", 
+      hasAccount: "Vous avez déjà un compte ?", 
+      noAccount: "Pas encore de compte ?", 
+      loginSuccess: "Connexion réussie",
+      registerLink: "S'inscrire",
+      loginLink: "Connexion",
+      noTransactions: "Aucune transaction trouvée",
+      logout: "Déconnexion",
+      appTitle: "KittyMoney AI",
+      totalIncome: "Revenu Total",
+      totalExpense: "Dépenses Totales",
+      balance: "Solde",
+      chartTitle: "Statistiques de Dépenses",
+      search: "Rechercher...",
+      all: "Tous",
+      allCategories: "Toutes Catégories",
+      exportCSV: "Exporter CSV",
+      editTransaction: "Modifier la transaction",
+      saveChanges: "Enregistrer les modifications",
+      budgetManagement: "Gestion du budget",
+      setBudget: "Définir le budget",
+      budgetFor: "Budget pour",
+      spent: "Dépensé",
+      remaining: "Restant",
+      exceeded: "Dépassé",
+      barChart: "Diagramme à barres",
+      pieChart: "Diagramme circulaire",
+      lineChart: "Diagramme linéaire",
+      categories: {
+        food: "Nourriture",
+        shopping: "Shopping",
+        transport: "Transport",
+        entertainment: "Divertissement",
+        salary: "Salaire",
+        investment: "Investissement",
+        other: "Autre"
+      },
+      aiSuggestions: {
+        savings: "Suggestions d'économies",
+        foodAnalysis: "Analyse des dépenses alimentaires",
+        categoryAnalysis: "Voir les dépenses par catégorie"
+      }
+    },
+    es: { 
+      login: "Iniciar sesión", 
+      register: "Registrarse", 
+      username: "Nombre de usuario", 
+      password: "Contraseña", 
+      addTransaction: "Agregar transacción", 
+      description: "Descripción", 
+      amount: "Cantidad", 
+      date: "Fecha", 
+      type: "Tipo", 
+      category: "Categoría",
+      income: "Ingreso", 
+      expense: "Gasto", 
+      transactionHistory: "Historial de transacciones", 
+      delete: "Eliminar", 
+      edit: "Editar",
+      confirmDelete: "¿Estás seguro de que deseas eliminar esta transacción?", 
+      successRegister: "¡Registro exitoso! Ahora puedes iniciar sesión.", 
+      userExists: "¡El usuario ya existe!", 
+      wrongCredentials: "¡Nombre de usuario o contraseña incorrectos!", 
+      hasAccount: "¿Ya tienes una cuenta?", 
+      noAccount: "¿No tienes una cuenta?", 
+      loginSuccess: "Inicio de sesión exitoso",
+      registerLink: "Registrarse",
+      loginLink: "Iniciar sesión",
+      noTransactions: "No se encontraron transacciones",
+      logout: "Cerrar sesión",
+      appTitle: "KittyMoney AI",
+      totalIncome: "Ingresos Totales",
+      totalExpense: "Gastos Totales",
+      balance: "Saldo",
+      chartTitle: "Estadísticas de Gastos",
+      search: "Buscar...",
+      all: "Todos",
+      allCategories: "Todas las Categorías",
+      exportCSV: "Exportar CSV",
+      editTransaction: "Editar Transacción",
+      saveChanges: "Guardar Cambios",
+      budgetManagement: "Gestión de Presupuesto",
+      setBudget: "Establecer Presupuesto",
+      budgetFor: "Presupuesto para",
+      spent: "Gastado",
+      remaining: "Restante",
+      exceeded: "Excedido",
+      barChart: "Gráfico de Barras",
+      pieChart: "Gráfico Circular",
+      lineChart: "Gráfico de Líneas",
+      categories: {
+        food: "Comida",
+        shopping: "Compras",
+        transport: "Transporte",
+        entertainment: "Entretenimiento",
+        salary: "Salario",
+        investment: "Inversión",
+        other: "Otro"
+      },
+      aiSuggestions: {
+        savings: "Sugerencias de ahorro",
+        foodAnalysis: "Análisis de gastos en comida",
+        categoryAnalysis: "Ver gastos por categoría"
+      }
+    }
+  };
+
+  // Initialize data
+  let users = JSON.parse(localStorage.getItem('users')) || {};
+  let transactions = JSON.parse(localStorage.getItem('transactions')) || {};
+  let budgets = JSON.parse(localStorage.getItem('budgets')) || {};
+  let currentUser = null;
+  let currentLang = 'vi';
+  let chart = null;
+  let chartType = 'bar';
+  let kittyAI = null;
+  let isDarkMode = localStorage.getItem('darkMode') === 'true';
+
+  // ==================== AI CORE ====================
+  class KittyAI {
+    constructor(transactions) {
+      this.transactions = transactions;
+    }
+    
+    // Phân loại giao dịch tự động bằng AI đơn giản
+    async classifyTransaction(description) {
+      const text = description.toLowerCase();
+      
+      // Logic phân loại cơ bản - có thể thay bằng model AI thực sự
+      if (text.includes('ăn') || text.includes('cơm') || text.includes('food') || text.includes('restaurant') || text.includes('nhà hàng')) {
+        return 'food';
+      } else if (text.includes('mua') || text.includes('shopping') || text.includes('market') || text.includes('siêu thị')) {
+        return 'shopping';
+      } else if (text.includes('grab') || text.includes('taxi') || text.includes('xe') || text.includes('đi lại')) {
+        return 'transport';
+      } else if (text.includes('lương') || text.includes('salary') || text.includes('tiền lương')) {
+        return 'salary';
+      } else if (text.includes('xem phim') || text.includes('cafe') || text.includes('giải trí')) {
+        return 'entertainment';
+      } else if (text.includes('đầu tư') || text.includes('investment') || text.includes('chứng khoán')) {
+        return 'investment';
+      } else {
+        return 'other';
+      }
+    }
+    
+    // Xử lý câu hỏi từ người dùng
+    async processQuery(query) {
+      const lowerQuery = query.toLowerCase();
+      const t = translations[currentLang];
+      
+      // Phân tích câu hỏi và trả lời
+      if (lowerQuery.includes('bao nhiêu') && (lowerQuery.includes('chi') || lowerQuery.includes('tiêu'))) {
+        return this.getSpendingAnalysis(query);
+      } else if (lowerQuery.includes('tiết kiệm') || lowerQuery.includes('save') || lowerQuery.includes('tiết kiệm')) {
+        return this.getSavingsAdvice();
+      } else if (lowerQuery.includes('nhiều nhất') || lowerQuery.includes('most') || lowerQuery.includes('max')) {
+        return this.getHighestSpending();
+      } else if (lowerQuery.includes('chào') || lowerQuery.includes('hello') || lowerQuery.includes('hi')) {
+        return `${t.appTitle}: Xin chào! Tôi là trợ lý tài chính Kitty. Tôi có thể giúp gì cho bạn? 😊`;
+      } else if (lowerQuery.includes('giúp') || lowerQuery.includes('help')) {
+        return `Tôi có thể giúp bạn:\n- Phân tích chi tiêu\n- Gợi ý tiết kiệm\n- Nhận diện thói quen chi tiêu\n\nHãy hỏi cụ thể như:\n"Tôi đã chi bao nhiêu cho ăn uống tháng này?"\n"Danh mục nào tôi chi nhiều nhất?"`;
+      } else if (lowerQuery.includes('ngân sách') || lowerQuery.includes('budget')) {
+        return this.getBudgetAnalysis();
+      } else {
+        return "Tôi không hiểu câu hỏi của bạn. Hãy thử hỏi:\n- Tôi đã chi bao nhiêu cho [danh mục]?\n- Tôi nên tiết kiệm ở đâu?\n- Danh mục nào tôi chi nhiều nhất?";
+      }
+    }
+    
+    // Phân tích chi tiêu
+    getSpendingAnalysis(query) {
+      const t = translations[currentLang];
+      const categoryMap = {
+        'ăn uống': 'food',
+        'mua sắm': 'shopping',
+        'đi lại': 'transport',
+        'giải trí': 'entertainment',
+        'lương': 'salary',
+        'đầu tư': 'investment'
+      };
+      
+      let category = 'all';
+      let timeRange = 'all';
+      
+      // Xác định danh mục từ câu hỏi
+      Object.entries(categoryMap).forEach(([key, value]) => {
+        if (query.includes(key)) category = value;
+      });
+      
+      // Xác định khoảng thời gian
+      if (query.includes('tháng này')) {
+        timeRange = 'thisMonth';
+      } else if (query.includes('tháng trước')) {
+        timeRange = 'lastMonth';
+      } else if (query.includes('tuần này')) {
+        timeRange = 'thisWeek';
+      } else if (query.includes('năm nay')) {
+        timeRange = 'thisYear';
+      }
+      
+      // Lọc giao dịch theo danh mục và thời gian
+      let filtered = this.transactions;
+      
+      if (category !== 'all') {
+        filtered = filtered.filter(t => t.category === category);
+      }
+      
+      const now = new Date();
+      if (timeRange === 'thisMonth') {
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        filtered = filtered.filter(t => {
+          const date = new Date(t.date);
+          return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+        });
+      } else if (timeRange === 'lastMonth') {
+        const lastMonth = now.getMonth() - 1;
+        const year = lastMonth < 0 ? now.getFullYear() - 1 : now.getFullYear();
+        filtered = filtered.filter(t => {
+          const date = new Date(t.date);
+          return date.getMonth() === lastMonth && date.getFullYear() === year;
+        });
+      } else if (timeRange === 'thisWeek') {
+        const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        filtered = filtered.filter(t => {
+          const date = new Date(t.date);
+          return date >= oneWeekAgo && date <= now;
+        });
+      } else if (timeRange === 'thisYear') {
+        const currentYear = now.getFullYear();
+        filtered = filtered.filter(t => {
+          const date = new Date(t.date);
+          return date.getFullYear() === currentYear;
+        });
+      }
+      
+      const total = filtered.reduce((sum, t) => sum + t.amount, 0);
+      const count = filtered.length;
+      
+      if (category === 'all' && timeRange === 'all') {
+        return `Bạn đã chi tổng cộng ${formatCurrency(total)} qua ${count} giao dịch`;
+      } else if (category === 'all') {
+        return `Bạn đã chi ${formatCurrency(total)} trong ${timeRange === 'thisMonth' ? 'tháng này' : timeRange === 'lastMonth' ? 'tháng trước' : timeRange === 'thisWeek' ? 'tuần này' : 'năm nay'} qua ${count} giao dịch`;
+      } else {
+        return `Bạn đã chi ${formatCurrency(total)} cho ${t.categories[category]}${timeRange !== 'all' ? ` trong ${timeRange === 'thisMonth' ? 'tháng này' : timeRange === 'lastMonth' ? 'tháng trước' : timeRange === 'thisWeek' ? 'tuần này' : 'năm nay'}` : ''} qua ${count} giao dịch`;
+      }
+    }
+    
+    // Gợi ý tiết kiệm
+    getSavingsAdvice() {
+      const t = translations[currentLang];
+      if (!this.transactions || this.transactions.length === 0) {
+        return "Bạn chưa có giao dịch nào để phân tích";
+      }
+      
+      // Phân tích danh mục chi nhiều nhất
+      const spendingByCategory = {};
+      this.transactions.forEach(t => {
+        if (t.type === 'expense') {
+          if (!spendingByCategory[t.category]) spendingByCategory[t.category] = 0;
+          spendingByCategory[t.category] += t.amount;
+        }
+      });
+      
+      const maxCategory = Object.keys(spendingByCategory).reduce((a, b) => 
+        spendingByCategory[a] > spendingByCategory[b] ? a : b
+      );
+      
+      const adviceMap = {
+        'food': `Bạn chi nhiều nhất cho ${t.categories.food} (${formatCurrency(spendingByCategory.food)}). Có thể tiết kiệm bằng cách:\n- Giảm ăn ngoài\n- Tự nấu ăn nhiều hơn\n- Mua thực phẩm theo kế hoạch`,
+        'shopping': `Bạn chi nhiều nhất cho ${t.categories.shopping} (${formatCurrency(spendingByCategory.shopping)}). Có thể tiết kiệm bằng cách:\n- Hạn chế mua sắm bốc đồng\n- Chờ đợi giảm giá\n- Mua đồ chất lượng tốt để dùng lâu dài`,
+        'transport': `Bạn chi nhiều nhất cho ${t.categories.transport} (${formatCurrency(spendingByCategory.transport)}). Có thể tiết kiệm bằng cách:\n- Đi bộ hoặc xe đạp cho quãng ngắn\n- Sử dụng phương tiện công cộng\n- Đi chung xe với đồng nghiệp`,
+        'entertainment': `Bạn chi nhiều nhất cho ${t.categories.entertainment} (${formatCurrency(spendingByCategory.entertainment)}). Có thể tiết kiệm bằng cách:\n- Giảm các hoạt động giải trí đắt tiền\n- Tìm kiếm các hoạt động miễn phí\n- Tận dụng các chương trình khuyến mãi`,
+        'other': `Bạn chi nhiều cho các khoản khác (${formatCurrency(spendingByCategory.other)}). Hãy xem lại các khoản chi này có thực sự cần thiết không.`
+      };
+      
+      return adviceMap[maxCategory] || "Hãy xem lại các khoản chi không cần thiết trong chi tiêu của bạn";
+    }
+    
+    // Chi tiêu nhiều nhất
+    getHighestSpending() {
+      const t = translations[currentLang];
+      if (!this.transactions || this.transactions.length === 0) {
+        return "Bạn chưa có giao dịch nào để phân tích";
+      }
+      
+      // Tìm giao dịch chi tiêu lớn nhất
+      const expenses = this.transactions.filter(t => t.type === 'expense');
+      if (expenses.length === 0) return "Bạn chưa có giao dịch chi tiêu nào";
+      
+      const highestExpense = expenses.reduce((max, t) => t.amount > max.amount ? t : max);
+      
+      return `Giao dịch chi nhiều nhất của bạn là "${highestExpense.description}" với số tiền ${formatCurrency(highestExpense.amount)} vào ngày ${formatDate(highestExpense.date)}. Danh mục: ${t.categories[highestExpense.category]}`;
+    }
+    
+    // Phân tích ngân sách
+    getBudgetAnalysis() {
+      const t = translations[currentLang];
+      if (!budgets[currentUser] || Object.keys(budgets[currentUser]).length === 0) {
+        return "Bạn chưa đặt ngân sách cho bất kỳ danh mục nào";
+      }
+      
+      let response = "Phân tích ngân sách của bạn:\n";
+      
+      // Tính toán chi tiêu theo danh mục
+      const spendingByCategory = {};
+      this.transactions.forEach(t => {
+        if (t.type === 'expense') {
+          if (!spendingByCategory[t.category]) spendingByCategory[t.category] = 0;
+          spendingByCategory[t.category] += t.amount;
+        }
+      });
+      
+      // Kiểm tra từng ngân sách
+      Object.entries(budgets[currentUser]).forEach(([category, budgetAmount]) => {
+        const spent = spendingByCategory[category] || 0;
+        const remaining = budgetAmount - spent;
+        const percentage = (spent / budgetAmount) * 100;
+        
+        response += `\n${t.categories[category]}: ${formatCurrency(spent)}/${formatCurrency(budgetAmount)} (${percentage.toFixed(0)}%)`;
+        
+        if (remaining > 0) {
+          response += ` - ${t.remaining}: ${formatCurrency(remaining)}`;
+        } else {
+          response += ` - ${t.exceeded}: ${formatCurrency(-remaining)}`;
+        }
+      });
+      
+      return response;
+    }
+  }
+
+  // ==================== UTILITY FUNCTIONS ====================
+  function showToast(message, type = "success") {
+    const toastContainer = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    
+    let icon = '';
+    switch(type) {
+      case 'success': icon = '<i class="fas fa-check-circle"></i>'; break;
+      case 'error': icon = '<i class="fas fa-exclamation-circle"></i>'; break;
+      case 'warning': icon = '<i class="fas fa-exclamation-triangle"></i>'; break;
+      case 'info': icon = '<i class="fas fa-info-circle"></i>'; break;
+    }
+    
+    toast.innerHTML = `${icon} ${message}`;
+    toastContainer.appendChild(toast);
+    
+    setTimeout(() => {
+      toast.classList.add('animate__animated', 'animate__fadeOut');
+      setTimeout(() => toast.remove(), 500);
+    }, 3000);
+  }
+
+  function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString(currentLang);
+  }
+
+  function formatCurrency(amount, lang = currentLang) {
+    return new Intl.NumberFormat(lang, {
+      style: 'currency',
+      currency: lang === 'vi' ? 'VND' : 'USD',
+      minimumFractionDigits: 0
+    }).format(amount);
+  }
+
+  function getCurrentMonth() {
+    const now = new Date();
+    return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  }
+
+  function toggleDarkMode() {
+    isDarkMode = !isDarkMode;
+    document.body.classList.toggle('dark-mode', isDarkMode);
+    localStorage.setItem('darkMode', isDarkMode);
+    
+    const icon = document.getElementById('dark-mode-icon');
+    if (isDarkMode) {
+      icon.classList.remove('fa-moon');
+      icon.classList.add('fa-sun');
+    } else {
+      icon.classList.remove('fa-sun');
+      icon.classList.add('fa-moon');
+    }
+    
+    showToast(isDarkMode ? "Đã bật chế độ tối" : "Đã tắt chế độ tối", "info");
+  }
+
+  // ==================== MODAL FUNCTIONS ====================
+  function openEditModal(transaction) {
+    document.getElementById('edit-id').value = transaction.id;
+    document.getElementById('edit-description').value = transaction.description;
+    document.getElementById('edit-amount').value = transaction.amount;
+    document.getElementById('edit-category').value = transaction.category;
+    document.getElementById('edit-type').value = transaction.type;
+    document.getElementById('edit-date').value = transaction.date;
+    
+    document.getElementById('edit-modal').style.display = 'block';
+    changeLanguage();
+  }
+
+  function closeModal() {
+    document.getElementById('edit-modal').style.display = 'none';
+  }
+
+  function saveEditedTransaction() {
+    const id = parseInt(document.getElementById('edit-id').value);
+    const description = document.getElementById('edit-description').value.trim();
+    const amount = parseFloat(document.getElementById('edit-amount').value);
+    const category = document.getElementById('edit-category').value;
+    const type = document.getElementById('edit-type').value;
+    const date = document.getElementById('edit-date').value;
+    
+    if (!description || isNaN(amount) || !date) {
+      showToast("Vui lòng điền đầy đủ thông tin", "error");
+      return;
+    }
+    
+    // Tìm và cập nhật giao dịch
+    const index = transactions[currentUser].findIndex(t => t.id === id);
+    if (index !== -1) {
+      transactions[currentUser][index] = {
+        id,
+        description,
+        amount,
+        category,
+        type,
+        date
+      };
+      
+      localStorage.setItem('transactions', JSON.stringify(transactions));
+      
+      // Cập nhật UI
+      renderTransactions();
+      updateSummary();
+      renderChart();
+      renderBudgetCards();
+      
+      // Cập nhật AI với dữ liệu mới
+      if (kittyAI) {
+        kittyAI = new KittyAI(transactions[currentUser]);
+      }
+      
+      showToast("Đã cập nhật giao dịch", "success");
+      closeModal();
+    } else {
+      showToast("Không tìm thấy giao dịch để cập nhật", "error");
+    }
+  }
+
+  // ==================== BUDGET FUNCTIONS ====================
+  function setBudget() {
+    const category = document.getElementById('budget-category').value;
+    const amount = parseFloat(document.getElementById('budget-amount').value);
+    
+    if (isNaN(amount) || amount <= 0) {
+      showToast("Vui lòng nhập số tiền hợp lệ", "error");
+      return;
+    }
+    
+    if (!budgets[currentUser]) {
+      budgets[currentUser] = {};
+    }
+    
+    budgets[currentUser][category] = amount;
+    localStorage.setItem('budgets', JSON.stringify(budgets));
+    
+    document.getElementById('budget-amount').value = '';
+    renderBudgetCards();
+    showToast("Đã đặt ngân sách thành công", "success");
+  }
+
+  function renderBudgetCards() {
+    const container = document.getElementById('budget-cards-container');
+    container.innerHTML = '';
+    
+    if (!budgets[currentUser] || Object.keys(budgets[currentUser]).length === 0) {
+      container.innerHTML = '<p id="no-budget-message">Bạn chưa đặt ngân sách nào</p>';
+      return;
+    }
+    
+    const t = translations[currentLang];
+    
+    // Tính toán chi tiêu theo danh mục
+    const spendingByCategory = {};
+    transactions[currentUser].forEach(t => {
+      if (t.type === 'expense') {
+        if (!spendingByCategory[t.category]) spendingByCategory[t.category] = 0;
+        spendingByCategory[t.category] += t.amount;
+      }
+    });
+    
+    // Tạo thẻ ngân sách cho mỗi danh mục
+    Object.entries(budgets[currentUser]).forEach(([category, budgetAmount]) => {
+      const spent = spendingByCategory[category] || 0;
+      const remaining = budgetAmount - spent;
+      const percentage = Math.min((spent / budgetAmount) * 100, 100);
+      
+      const card = document.createElement('div');
+      card.className = 'budget-card';
+      
+      let progressClass = 'progress-bar';
+      if (percentage > 90) {
+        progressClass = 'progress-bar progress-danger';
+      } else if (percentage > 70) {
+        progressClass = 'progress-bar progress-warning';
+      }
+      
+      card.innerHTML = `
+        <h4>${t.budgetFor} ${t.categories[category]}</h4>
+        <div class="amount">${formatCurrency(spent)} / ${formatCurrency(budgetAmount)}</div>
+        <div class="progress-container">
+          <div class="${progressClass}" style="width: ${percentage}%"></div>
+        </div>
+        <div>${remaining >= 0 ? t.remaining : t.exceeded}: ${formatCurrency(Math.abs(remaining))}</div>
+      `;
+      
+      container.appendChild(card);
+    });
+  }
+
+  // ==================== AI INTEGRATION ====================
+  function initAI() {
+    if (currentUser && transactions[currentUser]) {
+      kittyAI = new KittyAI(transactions[currentUser]);
+      
+      // Tự động phân loại khi nhập mô tả giao dịch
+      document.getElementById('description').addEventListener('blur', async function() {
+        const desc = this.value.trim();
+        if (desc) {
+          const category = await kittyAI.classifyTransaction(desc);
+          document.getElementById('category').value = category;
+          showToast(`Đã tự động phân loại thành: ${translations[currentLang].categories[category]}`, "success");
+        }
+      });
+    }
+  }
+  
+  async function askAI(query = null) {
+    if (!kittyAI) return;
+    
+    const inputElement = document.getElementById('ai-query-input');
+    const chatContainer = document.getElementById('ai-chat-container');
+    const submitBtn = document.getElementById('ai-submit-btn');
+    
+    const question = query || inputElement.value.trim();
+    if (!question) return;
+    
+    // Hiển thị câu hỏi của người dùng
+    const userQueryElement = document.createElement('div');
+    userQueryElement.className = 'user-query';
+    userQueryElement.textContent = `Bạn: ${question}`;
+    chatContainer.appendChild(userQueryElement);
+    
+    if (!query) inputElement.value = '';
+    
+    // Hiển thị trạng thái loading
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xử lý';
+    
+    try {
+      // Xử lý câu hỏi bằng AI
+      const response = await kittyAI.processQuery(question);
+      
+      // Hiển thị câu trả lời với hiệu ứng gõ từng chữ
+      const responseElement = document.createElement('div');
+      responseElement.className = 'ai-response';
+      chatContainer.appendChild(responseElement);
+      
+      let i = 0;
+      const speed = 20; // tốc độ hiển thị (ms mỗi ký tự)
+      function typeWriter() {
+        if (i < response.length) {
+          responseElement.innerHTML = `Kitty: ${response.substring(0, i+1)}${i < response.length - 1 ? '|' : ''}`;
+          i++;
+          setTimeout(typeWriter, speed);
+        }
+      }
+      typeWriter();
+      
+    } catch (error) {
+      chatContainer.innerHTML += `<div class="ai-response">Xin lỗi, có lỗi xảy ra khi xử lý yêu cầu</div>`;
+      console.error("AI Error:", error);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Gửi';
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+  }
+
+  // ==================== AUTH FUNCTIONS ====================
+  function showLogin() {
+    document.getElementById('register-section').classList.remove('animate__fadeIn');
+    document.getElementById('register-section').style.display = 'none';
+    document.getElementById('auth-section').classList.add('animate__fadeIn');
+    document.getElementById('auth-section').style.display = 'block';
+    document.getElementById('username').focus();
+    changeLanguage();
+  }
+
+  function showRegister() {
+    document.getElementById('auth-section').classList.remove('animate__fadeIn');
+    document.getElementById('auth-section').style.display = 'none';
+    document.getElementById('register-section').classList.add('animate__fadeIn');
+    document.getElementById('register-section').style.display = 'block';
+    document.getElementById('new-username').focus();
+    changeLanguage();
+  }
+
+  function login() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value.trim();
+    
+    if (!username || !password) {
+      showToast(translations[currentLang].wrongCredentials, "error");
+      return;
+    }
+    
+    if (users[username] && users[username] === password) {
+      currentUser = username;
+      
+      // Initialize transactions if not exists
+      if (!transactions[currentUser]) {
+        transactions[currentUser] = [];
+        localStorage.setItem('transactions', JSON.stringify(transactions));
+      }
+      
+      // Initialize budgets if not exists
+      if (!budgets[currentUser]) {
+        budgets[currentUser] = {};
+        localStorage.setItem('budgets', JSON.stringify(budgets));
+      }
+      
+      showToast(translations[currentLang].loginSuccess, "success");
+      document.getElementById('username').value = '';
+      document.getElementById('password').value = '';
+      showApp();
+    } else {
+      showToast(translations[currentLang].wrongCredentials, "error");
+    }
+  }
+
+  function register() {
+    const username = document.getElementById('new-username').value.trim();
+    const password = document.getElementById('new-password').value.trim();
+    
+    if (!username || !password) {
+      showToast("Vui lòng nhập đầy đủ thông tin", "error");
+      return;
+    }
+    
+    if (users[username]) {
+      showToast(translations[currentLang].userExists, "error");
+    } else {
+      users[username] = password;
+      localStorage.setItem('users', JSON.stringify(users));
+      
+      // Create empty transactions for new user
+      if (!transactions[username]) {
+        transactions[username] = [];
+        localStorage.setItem('transactions', JSON.stringify(transactions));
+      }
+      
+      // Create empty budgets for new user
+      if (!budgets[username]) {
+        budgets[username] = {};
+        localStorage.setItem('budgets', JSON.stringify(budgets));
+      }
+      
+      showToast(translations[currentLang].successRegister, "success");
+      document.getElementById('new-username').value = '';
+      document.getElementById('new-password').value = '';
+      showLogin();
+    }
+  }
+
+  function logout() {
+    currentUser = null;
+    kittyAI = null;
+    showLogin();
+    if (chart) {
+      chart.destroy();
+      chart = null;
+    }
+  }
+
+  function showApp() {
+    document.getElementById('auth-section').style.display = 'none';
+    document.getElementById('register-section').style.display = 'none';
+    document.getElementById('app-section').style.display = 'block';
+    
+    // Set current date as default
+    document.getElementById('date').valueAsDate = new Date();
+    document.getElementById('filter-month').value = getCurrentMonth();
+    
+    renderTransactions();
+    updateSummary();
+    renderChart();
+    renderBudgetCards();
+    changeLanguage();
+    
+    // Apply dark mode if enabled
+    document.body.classList.toggle('dark-mode', isDarkMode);
+    const icon = document.getElementById('dark-mode-icon');
+    if (isDarkMode) {
+      icon.classList.remove('fa-moon');
+      icon.classList.add('fa-sun');
+    } else {
+      icon.classList.remove('fa-sun');
+      icon.classList.add('fa-moon');
+    }
+    
+    // Khởi tạo AI
+    initAI();
+  }
+
+  // ==================== TRANSACTION FUNCTIONS ====================
+  function addTransaction() {
+    const description = document.getElementById('description').value.trim();
+    const amount = parseFloat(document.getElementById('amount').value);
+    const type = document.getElementById('type').value;
+    const category = document.getElementById('category').value;
+    let date = document.getElementById('date').value;
+    
+    if (!description || isNaN(amount) || !date) {
+      showToast("Vui lòng điền đầy đủ thông tin", "error");
+      return;
+    }
+    
+    // If date is empty, use today's date
+    if (!date) {
+      const today = new Date();
+      date = today.toISOString().split('T')[0];
+    }
+    
+    if (!transactions[currentUser]) {
+      transactions[currentUser] = [];
+    }
+    
+    const newTransaction = {
+      id: Date.now(), // Unique ID for each transaction
+      description,
+      amount,
+      type,
+      category,
+      date
+    };
+    
+    transactions[currentUser].push(newTransaction);
+    localStorage.setItem('transactions', JSON.stringify(transactions));
+    
+    // Clear form
+    document.getElementById('description').value = '';
+    document.getElementById('amount').value = '';
+    
+    // Update UI
+    renderTransactions();
+    updateSummary();
+    renderChart();
+    renderBudgetCards();
+    
+    // Cập nhật AI với dữ liệu mới
+    if (kittyAI) {
+      kittyAI = new KittyAI(transactions[currentUser]);
+    }
+    
+    showToast(translations[currentLang].addTransaction + " thành công!", "success");
+  }
+
+  function deleteTransaction(id) {
+    if (confirm(translations[currentLang].confirmDelete)) {
+      transactions[currentUser] = transactions[currentUser].filter(t => t.id !== id);
+      localStorage.setItem('transactions', JSON.stringify(transactions));
+      renderTransactions();
+      updateSummary();
+      renderChart();
+      renderBudgetCards();
+      
+      // Cập nhật AI với dữ liệu mới
+      if (kittyAI) {
+        kittyAI = new KittyAI(transactions[currentUser]);
+      }
+      
+      showToast("Đã xóa giao dịch", "success");
+    }
+  }
+
+  function filterTransactions() {
+    const searchText = document.getElementById('search-input').value.toLowerCase();
+    const filterType = document.getElementById('filter-type').value;
+    const filterCategory = document.getElementById('filter-category').value;
+    const filterMonth = document.getElementById('filter-month').value;
+    
+    let filtered = transactions[currentUser] || [];
+    
+    // Apply filters
+    if (searchText) {
+      filtered = filtered.filter(t => 
+        t.description.toLowerCase().includes(searchText)
+      );
+    }
+    
+    if (filterType !== 'all') {
+      filtered = filtered.filter(t => t.type === filterType);
+    }
+    
+    if (filterCategory !== 'all') {
+      filtered = filtered.filter(t => t.category === filterCategory);
+    }
+    
+    if (filterMonth) {
+      filtered = filtered.filter(t => {
+        const transactionDate = new Date(t.date);
+        const transactionMonth = transactionDate.getFullYear() + '-' + 
+                              String(transactionDate.getMonth() + 1).padStart(2, '0');
+        return transactionMonth === filterMonth;
+      });
+    }
+    
+    return filtered;
+  }
+
+  function renderTransactions() {
+    const tbody = document.getElementById("transaction-body");
+    tbody.innerHTML = '';
+    
+    const filteredTransactions = filterTransactions();
+    const t = translations[currentLang];
+    
+    if (filteredTransactions.length > 0) {
+      // Sort by date (newest first)
+      const sortedTransactions = [...filteredTransactions].sort((a, b) => 
+        new Date(b.date) - new Date(a.date)
+      );
+      
+      sortedTransactions.forEach((transaction) => {
+        const row = document.createElement("tr");
+        row.className = "animate__animated animate__fadeIn";
+        row.innerHTML = `
+          <td>${formatDate(transaction.date)}</td>
+          <td>${transaction.description}</td>
+          <td><span class="category-tag">${t.categories[transaction.category]}</span></td>
+          <td>${t[transaction.type]}</td>
+          <td class="${transaction.type === 'income' ? 'income-amount' : 'expense-amount'}">
+            ${transaction.type === 'income' ? '+' : '-'}${formatCurrency(transaction.amount)}
+          </td>
+          <td>
+            <button class="edit-btn" onclick="openEditModal(${JSON.stringify(transaction).replace(/"/g, '&quot;')})">${t.edit}</button>
+            <button class="delete-btn" onclick="deleteTransaction(${transaction.id})">${t.delete}</button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    } else {
+      const row = document.createElement("tr");
+      row.innerHTML = `<td colspan="6" class="no-transactions">${t.noTransactions}</td>`;
+      tbody.appendChild(row);
+    }
+  }
+
+  function updateSummary() {
+    if (!transactions[currentUser]) return;
+    
+    const totalIncome = transactions[currentUser]
+      .filter(t => t.type === 'income')
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const totalExpense = transactions[currentUser]
+      .filter(t => t.type === 'expense')
+      .reduce((sum, t) => sum + t.amount, 0);
+    
+    const balance = totalIncome - totalExpense;
+    
+    document.getElementById('total-income').textContent = formatCurrency(totalIncome);
+    document.getElementById('total-expense').textContent = formatCurrency(totalExpense);
+    document.getElementById('total-balance').textContent = formatCurrency(balance);
+  }
+
+  function changeChartType(type) {
+    chartType = type;
+    renderChart();
+    
+    // Update active tab
+    document.getElementById('bar-chart-tab').classList.remove('active');
+    document.getElementById('pie-chart-tab').classList.remove('active');
+    document.getElementById('line-chart-tab').classList.remove('active');
+    document.getElementById(`${type}-chart-tab`).classList.add('active');
+  }
+
+  function renderChart() {
+    const ctx = document.getElementById('stats-chart');
+    
+    // Destroy previous chart if exists
+    if (chart) {
+      chart.destroy();
+    }
+    
+    if (!transactions[currentUser] || transactions[currentUser].length === 0) {
+      ctx.style.display = 'none';
+      return;
+    }
+    
+    ctx.style.display = 'block';
+    
+    // Group by category
+    const categories = {};
+    transactions[currentUser].forEach(t => {
+      if (!categories[t.category]) {
+        categories[t.category] = { income: 0, expense: 0 };
+      }
+      categories[t.category][t.type] += t.amount;
+    });
+    
+    const categoryLabels = Object.keys(categories).map(cat => translations[currentLang].categories[cat]);
+    const incomeData = Object.values(categories).map(c => c.income);
+    const expenseData = Object.values(categories).map(c => c.expense);
+    
+    const chartConfig = {
+      type: chartType,
+      data: {
+        labels: categoryLabels,
+        datasets: [
+          {
+            label: translations[currentLang].income,
+            data: incomeData,
+            backgroundColor: '#06d6a0',
+            borderColor: '#06d6a0',
+            borderWidth: 1
+          },
+          {
+            label: translations[currentLang].expense,
+            data: expenseData,
+            backgroundColor: '#ef476f',
+            borderColor: '#ef476f',
+            borderWidth: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        }
+      }
+    };
+    
+    // Adjust config for pie chart
+    if (chartType === 'pie') {
+      chartConfig.data.datasets = [{
+        label: 'Transactions',
+        data: [...incomeData, ...expenseData],
+        backgroundColor: [
+          '#06d6a0', '#ef476f', '#118ab2', '#ffd166', '#073b4c', 
+          '#7209b7', '#f72585', '#4cc9f0', '#4895ef', '#4361ee'
+        ],
+        borderColor: '#fff',
+        borderWidth: 1
+      }];
+      
+      chartConfig.options.plugins = {
+        legend: {
+          position: 'right'
+        }
+      };
+    }
+    
+    // Adjust config for line chart
+    if (chartType === 'line') {
+      chartConfig.data.datasets[0].fill = false;
+      chartConfig.data.datasets[1].fill = false;
+      chartConfig.data.datasets[0].tension = 0.1;
+      chartConfig.data.datasets[1].tension = 0.1;
+    }
+    
+    chart = new Chart(ctx, chartConfig);
+  }
+
+  function exportToCSV() {
+    if (!transactions[currentUser] || transactions[currentUser].length === 0) {
+      showToast("Không có dữ liệu để xuất", "warning");
+      return;
+    }
+    
+    const filteredTransactions = filterTransactions();
+    const t = translations[currentLang];
+    
+    let csv = 'Date,Description,Category,Type,Amount\n';
+    
+    filteredTransactions.forEach(t => {
+      csv += `"${t.date}","${t.description}","${t.categories[t.category]}","${t[t.type]}","${t.type === 'income' ? '+' : '-'}${t.amount}"\n`;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `KittyMoney_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showToast("Xuất CSV thành công", "success");
+  }
+
+  // ==================== LANGUAGE FUNCTIONS ====================
+  function changeLanguage() {
+    currentLang = document.getElementById('language-select').value;
+    const t = translations[currentLang];
+    
+    // Update auth section
+    document.getElementById("login-title").innerText = t.login;
+    document.getElementById("login-btn-text").innerText = t.login;
+    document.getElementById("username").placeholder = t.username;
+    document.getElementById("password").placeholder = t.password;
+    document.getElementById("register-link").innerText = t.noAccount;
+    document.getElementById("register-link-text").innerHTML = t.registerLink + ' <span class="kitty-coin"></span>';
+    
+    // Update register section
+    document.getElementById("register-title").innerText = t.register;
+    document.getElementById("register-btn-text").innerText = t.register;
+    document.getElementById("new-username").placeholder = t.username;
+    document.getElementById("new-password").placeholder = t.password;
+    document.getElementById("login-link").innerText = t.hasAccount;
+    document.getElementById("login-link-text").innerHTML = t.loginLink + ' <span class="kitty-coin"></span>';
+    
+    // Update app section
+    document.getElementById("app-title").innerHTML = t.appTitle + ' <span class="kitty-coin"></span>';
+    document.getElementById("logout-btn").innerHTML = t.logout + ' <span class="kitty-coin"></span>';
+    document.getElementById("add-transaction-title").innerHTML = t.addTransaction + ' <span class="kitty-coin"></span>';
+    document.getElementById("description").placeholder = t.description;
+    document.getElementById("amount").placeholder = t.amount;
+    document.getElementById("income-option").innerHTML = t.income;
+    document.getElementById("expense-option").innerHTML = t.expense;
+    document.getElementById("add-btn").innerHTML = `<i class="fas fa-plus-circle"></i> ${t.addTransaction} <span class="kitty-coin"></span>`;
+    document.getElementById("history-title").innerHTML = t.transactionHistory + ' <span class="kitty-coin"></span>';
+    document.getElementById("th-date").innerHTML = t.date;
+    document.getElementById("th-description").innerHTML = t.description;
+    document.getElementById("th-category").innerHTML = t.category;
+    document.getElementById("th-type").innerHTML = t.type;
+    document.getElementById("th-amount").innerHTML = t.amount;
+    document.getElementById("th-action").innerHTML = t.action;
+    
+    // Update category options
+    document.getElementById("category-other").innerText = t.categories.other;
+    document.getElementById("category-food").innerText = t.categories.food;
+    document.getElementById("category-shopping").innerText = t.categories.shopping;
+    document.getElementById("category-transport").innerText = t.categories.transport;
+    document.getElementById("category-entertainment").innerText = t.categories.entertainment;
+    document.getElementById("category-salary").innerText = t.categories.salary;
+    document.getElementById("category-investment").innerText = t.categories.investment;
+    
+    // Update filter options
+    document.getElementById("filter-all").innerText = t.all;
+    document.getElementById("filter-income").innerText = t.income;
+    document.getElementById("filter-expense").innerText = t.expense;
+    document.getElementById("filter-category-all").innerText = t.allCategories;
+    document.getElementById("filter-category-food").innerText = t.categories.food;
+    document.getElementById("filter-category-shopping").innerText = t.categories.shopping;
+    document.getElementById("filter-category-transport").innerText = t.categories.transport;
+    document.getElementById("filter-category-entertainment").innerText = t.categories.entertainment;
+    document.getElementById("filter-category-salary").innerText = t.categories.salary;
+    document.getElementById("filter-category-investment").innerText = t.categories.investment;
+    document.getElementById("filter-category-other").innerText = t.categories.other;
+    document.getElementById("search-input").placeholder = t.search;
+    document.getElementById("export-btn").innerHTML = `<i class="fas fa-file-export"></i> ${t.exportCSV} <span class="kitty-coin"></span>`;
+    
+    // Update summary cards
+    document.getElementById("income-title").innerText = t.totalIncome;
+    document.getElementById("expense-title").innerText = t.totalExpense;
+    document.getElementById("balance-title").innerText = t.balance;
+    document.getElementById("chart-title").innerText = t.chartTitle;
+    
+    // Update AI suggestions
+    document.getElementById("ai-suggestions").innerHTML = `
+      <div class="ai-suggestion" onclick="askAI('${t.aiSuggestions.savings}')">💡 ${t.aiSuggestions.savings}</div>
+      <div class="ai-suggestion" onclick="askAI('${t.aiSuggestions.foodAnalysis}')">🍔 ${t.aiSuggestions.foodAnalysis}</div>
+      <div class="ai-suggestion" onclick="askAI('${t.aiSuggestions.categoryAnalysis}')">📊 ${t.aiSuggestions.categoryAnalysis}</div>
+    `;
+    
+    // Update chart tabs
+    document.getElementById("bar-chart-tab").innerText = t.barChart;
+    document.getElementById("pie-chart-tab").innerText = t.pieChart;
+    document.getElementById("line-chart-tab").innerText = t.lineChart;
+    
+    // Update budget section
+    document.getElementById("budget-category-food").innerText = t.categories.food;
+    document.getElementById("budget-category-shopping").innerText = t.categories.shopping;
+    document.getElementById("budget-category-transport").innerText = t.categories.transport;
+    document.getElementById("budget-category-entertainment").innerText = t.categories.entertainment;
+    document.getElementById("set-budget-btn").innerText = t.setBudget;
+    
+    // Update edit modal
+    document.getElementById("edit-title").innerText = t.editTransaction;
+    document.getElementById("save-edit-btn").innerHTML = `<i class="fas fa-save"></i> ${t.saveChanges}`;
+    
+    // If logged in, re-render transactions with new language
+    if (currentUser) {
+      renderTransactions();
+      updateSummary();
+      renderChart();
+      renderBudgetCards();
+    }
+  }
+
+  // ==================== EVENT LISTENERS ====================
+  document.getElementById('search-input').addEventListener('input', renderTransactions);
+  document.getElementById('filter-type').addEventListener('change', renderTransactions);
+  document.getElementById('filter-category').addEventListener('change', renderTransactions);
+  document.getElementById('filter-month').addEventListener('change', renderTransactions);
+  
+  // Allow pressing Enter in AI chat input
+  document.getElementById('ai-query-input').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      askAI();
+    }
+  });
+
+  // Close modal when clicking outside
+  window.addEventListener('click', function(event) {
+    if (event.target === document.getElementById('edit-modal')) {
+      closeModal();
+    }
+  });
+
+  // ==================== INITIALIZATION ====================
+  // Set default language
+  changeLanguage();
+  
+  // Check if user is already logged in (for demo purposes)
+  if (Object.keys(users).length > 0) {
+    showLogin();
+  } else {
+    showRegister();
+  }
+</script>
+</body>
+</html>
