@@ -791,6 +791,105 @@
       color: #f0f0f0;
       border-color: #5e548e;
     }
+
+    /* New styles for transaction table */
+    .transaction-description i {
+      margin-right: 8px;
+      color: var(--dark-color);
+      width: 20px;
+      text-align: center;
+    }
+    
+    .no-data-message {
+      text-align: center;
+      padding: 30px !important;
+      color: #666;
+    }
+    
+    .no-data-message i {
+      font-size: 40px;
+      margin-bottom: 15px;
+      color: var(--secondary-color);
+      opacity: 0.7;
+    }
+    
+    .no-data-message div {
+      font-size: 18px;
+      margin-bottom: 5px;
+    }
+    
+    .no-data-message small {
+      font-size: 14px;
+      color: #999;
+    }
+    
+    .date-header {
+      background-color: rgba(255, 182, 193, 0.2) !important;
+      border-left: 4px solid var(--primary-color);
+    }
+    
+    .date-header td {
+      padding: 8px 15px !important;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .daily-summary {
+      font-size: 13px;
+    }
+    
+    .daily-income {
+      color: var(--success-color);
+      margin-right: 15px;
+    }
+    
+    .daily-expense {
+      color: var(--danger-color);
+    }
+    
+    .badge {
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    
+    .income-badge {
+      background-color: rgba(6, 214, 160, 0.1);
+      color: var(--success-color);
+    }
+    
+    .expense-badge {
+      background-color: rgba(239, 71, 111, 0.1);
+      color: var(--danger-color);
+    }
+    
+    .amount-cell {
+      font-weight: bold;
+    }
+    
+    .income-amount {
+      color: var(--success-color);
+    }
+    
+    .expense-amount {
+      color: var(--danger-color);
+    }
+    
+    .action-buttons {
+      display: flex;
+      gap: 5px;
+    }
+    
+    .action-buttons button {
+      padding: 5px 10px !important;
+      min-width: auto !important;
+    }
+    
+    body.dark-mode .date-header {
+      background-color: rgba(94, 84, 142, 0.2) !important;
+    }
   </style>
 </head>
 <body>
@@ -1415,11 +1514,68 @@
     }
   };
 
-  // Initialize data
-  let users = JSON.parse(localStorage.getItem('users')) || {};
-  let transactions = JSON.parse(localStorage.getItem('transactions')) || {};
-  let budgets = JSON.parse(localStorage.getItem('budgets')) || {};
-  let goals = JSON.parse(localStorage.getItem('goals')) || {};
+  // Initialize data with sample data
+  let users = JSON.parse(localStorage.getItem('users')) || {
+    "demo": "123456" // Default demo account
+  };
+  
+  let transactions = JSON.parse(localStorage.getItem('transactions')) || {
+    "demo": [
+      {
+        id: 1,
+        description: "Lương tháng",
+        amount: 15000000,
+        category: "salary",
+        type: "income",
+        date: new Date().toISOString().split('T')[0]
+      },
+      {
+        id: 2,
+        description: "Ăn trưa",
+        amount: 50000,
+        category: "food",
+        type: "expense",
+        date: new Date().toISOString().split('T')[0]
+      },
+      {
+        id: 3,
+        description: "Xăng xe",
+        amount: 200000,
+        category: "transport",
+        type: "expense",
+        date: new Date(Date.now() - 86400000).toISOString().split('T')[0] // Yesterday
+      },
+      {
+        id: 4,
+        description: "Mua sách",
+        amount: 250000,
+        category: "shopping",
+        type: "expense",
+        date: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0] // 2 days ago
+      }
+    ]
+  };
+  
+  let budgets = JSON.parse(localStorage.getItem('budgets')) || {
+    "demo": {
+      "food": 2000000,
+      "transport": 1000000,
+      "entertainment": 1000000
+    }
+  };
+  
+  let goals = JSON.parse(localStorage.getItem('goals')) || {
+    "demo": [
+      {
+        id: 1,
+        name: "Du lịch Đà Lạt",
+        targetAmount: 10000000,
+        saved: 3000000,
+        deadline: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0] // 30 days later
+      }
+    ]
+  };
+
   let currentUser = null;
   let currentLang = 'vi';
   let chart = null;
@@ -1515,7 +1671,7 @@
       return;
     }
     
-    // Tìm và cập nhật giao dịch
+    // Find and update transaction
     const index = transactions[currentUser].findIndex(t => t.id === id);
     if (index !== -1) {
       transactions[currentUser][index] = {
@@ -1529,13 +1685,13 @@
       
       localStorage.setItem('transactions', JSON.stringify(transactions));
       
-      // Cập nhật UI
+      // Update UI
       renderTransactions();
       updateSummary();
       renderChart();
       renderBudgetCards();
       
-      // Cập nhật AI với dữ liệu mới
+      // Update AI with new data
       if (kittyAI) {
         kittyAI = new KittyAI(transactions[currentUser]);
       }
@@ -1698,7 +1854,7 @@
     
     const t = translations[currentLang];
     
-    // Tính toán chi tiêu theo danh mục
+    // Calculate spending by category
     const spendingByCategory = {};
     transactions[currentUser].forEach(t => {
       if (t.type === 'expense') {
@@ -1707,7 +1863,7 @@
       }
     });
     
-    // Tạo thẻ ngân sách cho mỗi danh mục
+    // Create budget card for each category
     Object.entries(budgets[currentUser]).forEach(([category, budgetAmount]) => {
       const spent = spendingByCategory[category] || 0;
       const remaining = budgetAmount - spent;
@@ -1905,7 +2061,7 @@
       
       let analysis = "Phân tích ngân sách của bạn:\n";
       
-      // Tính toán chi tiêu theo danh mục
+      // Calculate spending by category
       const spendingByCategory = {};
       this.transactions.forEach(t => {
         if (t.type === 'expense') {
@@ -1986,7 +2142,7 @@
       return;
     }
     
-    // Tạo tài khoản mới
+    // Create new account
     users[username] = password;
     transactions[username] = [];
     budgets[username] = {};
@@ -2013,14 +2169,14 @@
     if (users[username] && users[username] === password) {
       currentUser = username;
       
-      // Khởi tạo AI với dữ liệu giao dịch
+      // Initialize AI with transaction data
       kittyAI = new KittyAI(transactions[currentUser]);
       
-      // Hiển thị ứng dụng
+      // Show app
       document.getElementById('auth-section').style.display = 'none';
       document.getElementById('app-section').style.display = 'block';
       
-      // Load dữ liệu
+      // Load data
       renderTransactions();
       updateSummary();
       renderChart();
@@ -2080,7 +2236,7 @@
     renderChart();
     renderBudgetCards();
     
-    // Cập nhật AI với dữ liệu mới
+    // Update AI with new data
     kittyAI = new KittyAI(transactions[currentUser]);
     
     showToast("Đã thêm giao dịch", "success");
@@ -2098,7 +2254,7 @@
       renderChart();
       renderBudgetCards();
       
-      // Cập nhật AI với dữ liệu mới
+      // Update AI with new data
       kittyAI = new KittyAI(transactions[currentUser]);
       
       showToast("Đã xóa giao dịch", "success");
@@ -2108,9 +2264,18 @@
   function renderTransactions() {
     const tbody = document.getElementById('transaction-body');
     tbody.innerHTML = '';
+    const t = translations[currentLang];
     
     if (!transactions[currentUser] || transactions[currentUser].length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" id="no-transactions-message">${t.noTransactions}</td></tr>`;
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" class="no-data-message">
+            <i class="fas fa-wallet"></i>
+            <div>${t.noTransactions}</div>
+            <small>Hãy thêm giao dịch đầu tiên của bạn</small>
+          </td>
+        </tr>
+      `;
       return;
     }
     
@@ -2131,23 +2296,88 @@
       .sort((a, b) => new Date(b.date) - new Date(a.date));
     
     if (filtered.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" id="no-filtered-transactions">Không tìm thấy giao dịch phù hợp</td></tr>`;
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" class="no-data-message">
+            <i class="fas fa-search"></i>
+            <div>Không tìm thấy giao dịch phù hợp</div>
+            <small>Hãy thử thay đổi bộ lọc</small>
+          </td>
+        </tr>
+      `;
       return;
     }
     
+    // Add date headers for each day
+    let currentDate = null;
+    
     filtered.forEach(t => {
+      const transactionDate = t.date.split('T')[0];
+      
+      // Add date header if different from previous date
+      if (transactionDate !== currentDate) {
+        currentDate = transactionDate;
+        
+        // Calculate daily totals
+        const dailyTransactions = filtered.filter(tr => tr.date.split('T')[0] === currentDate);
+        const dailyIncome = dailyTransactions
+          .filter(tr => tr.type === 'income')
+          .reduce((sum, tr) => sum + tr.amount, 0);
+        const dailyExpense = dailyTransactions
+          .filter(tr => tr.type === 'expense')
+          .reduce((sum, tr) => sum + tr.amount, 0);
+        
+        const dateHeader = document.createElement('tr');
+        dateHeader.className = 'date-header';
+        dateHeader.innerHTML = `
+          <td colspan="6">
+            <strong>${formatDate(currentDate)}</strong>
+            <span class="daily-summary">
+              <span class="daily-income">${t.income}: ${formatCurrency(dailyIncome)}</span>
+              <span class="daily-expense">${t.expense}: ${formatCurrency(dailyExpense)}</span>
+            </span>
+          </td>
+        `;
+        tbody.appendChild(dateHeader);
+      }
+      
+      // Add transaction row
       const row = document.createElement('tr');
       row.className = 'animate__animated animate__fadeIn';
       
+      // Create icons for each category
+      const categoryIcons = {
+        food: 'fas fa-utensils',
+        shopping: 'fas fa-shopping-bag',
+        transport: 'fas fa-car',
+        entertainment: 'fas fa-film',
+        salary: 'fas fa-money-bill-wave',
+        investment: 'fas fa-chart-line',
+        other: 'fas fa-question-circle'
+      };
+      
       row.innerHTML = `
-        <td>${formatDate(t.date)}</td>
-        <td>${t.description}</td>
+        <td>${formatDate(t.date).split(',')[0]}</td>
+        <td class="transaction-description">
+          <i class="${categoryIcons[t.category]}"></i>
+          ${t.description}
+        </td>
         <td><span class="category-tag">${t.categories[t.category]}</span></td>
-        <td>${t.type === 'income' ? '<span style="color: var(--success-color);">' + t.income + '</span>' : '<span style="color: var(--danger-color);">' + t.expense + '</span>'}</td>
-        <td>${formatCurrency(t.amount)}</td>
         <td>
-          <button class="edit-btn" onclick="openEditModal(${JSON.stringify(t).replace(/"/g, '&quot;')})">${t.edit}</button>
-          <button class="delete-btn" onclick="deleteTransaction(${t.id})">${t.delete}</button>
+          ${t.type === 'income' ? 
+            `<span class="badge income-badge"><i class="fas fa-arrow-down"></i> ${t.income}</span>` : 
+            `<span class="badge expense-badge"><i class="fas fa-arrow-up"></i> ${t.expense}</span>`}
+        </td>
+        <td class="amount-cell ${t.type === 'income' ? 'income-amount' : 'expense-amount'}">
+          ${t.type === 'income' ? '+' : '-'}${formatCurrency(t.amount)}
+        </td>
+        <td class="action-buttons">
+          <button class="edit-btn" onclick="openEditModal(${JSON.stringify(t).replace(/"/g, '&quot;')})">
+            <i class="fas fa-edit"></i>
+          </button>
+          <button class="delete-btn" onclick="deleteTransaction(${t.id})">
+            <i class="fas fa-trash"></i>
+          </button>
         </td>
       `;
       
