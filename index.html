@@ -8,7 +8,6 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.18.0/dist/tf.min.js"></script>
   <style>
     :root {
       --primary-color: #ff85a2;
@@ -21,6 +20,7 @@
       --warning-color: #ffd166;
       --ai-color: #7e57c2;
       --info-color: #118ab2;
+      --goal-color: #8338ec;
     }
     
     * {
@@ -147,6 +147,19 @@
     @keyframes fadeOut {
       from { opacity: 1; }
       to { opacity: 0; }
+    }
+    
+    /* Language Selector */
+    .language-select {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 150px;
+      padding: 8px 12px;
+      border-radius: 15px;
+      border: 2px solid var(--primary-color);
+      background-color: var(--light-color);
+      z-index: 999;
     }
     
     /* AI Panel Styles */
@@ -584,6 +597,76 @@
       background: var(--warning-color);
     }
     
+    /* Savings Goals Section */
+    .goals-section {
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      margin: 20px 0;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+      border: 2px solid var(--goal-color);
+    }
+    
+    .goals-cards {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+    
+    .goal-card {
+      flex: 1;
+      min-width: 200px;
+      background: white;
+      padding: 15px;
+      border-radius: 15px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+      border: 2px solid var(--goal-color);
+      text-align: center;
+      position: relative;
+    }
+    
+    .goal-card h4 {
+      margin-top: 0;
+      color: var(--dark-color);
+    }
+    
+    .goal-card .progress-container {
+      height: 20px;
+      background: #eee;
+      border-radius: 10px;
+      margin: 10px 0;
+      overflow: hidden;
+    }
+    
+    .goal-card .progress-bar {
+      height: 100%;
+      background: var(--goal-color);
+      border-radius: 10px;
+      transition: width 0.5s ease;
+    }
+    
+    .goal-card .goal-days-left {
+      font-size: 12px;
+      color: #666;
+      margin-top: 5px;
+    }
+    
+    .goal-card .goal-completed {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: var(--success-color);
+      color: white;
+      padding: 3px 8px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    
+    .goal-card .goal-actions {
+      margin-top: 10px;
+    }
+    
     /* Responsive Design */
     @media (max-width: 768px) {
       .container, .auth-container {
@@ -595,7 +678,7 @@
         padding: 10px 12px;
       }
       
-      .summary-cards, .budget-cards {
+      .summary-cards, .budget-cards, .goals-cards {
         flex-direction: column;
       }
       
@@ -644,6 +727,7 @@
     body.dark-mode .chart-container,
     body.dark-mode .summary-card,
     body.dark-mode .budget-card,
+    body.dark-mode .goal-card,
     body.dark-mode .modal-content,
     body.dark-mode table {
       background: #333;
@@ -692,6 +776,20 @@
     
     body.dark-mode tr:hover {
       background: #4a4a4a;
+    }
+    
+    body.dark-mode .goals-section {
+      border-color: #9c7aff;
+    }
+    
+    body.dark-mode .goal-card {
+      border-color: #9c7aff;
+    }
+    
+    body.dark-mode .language-select {
+      background: #444;
+      color: #f0f0f0;
+      border-color: #5e548e;
     }
   </style>
 </head>
@@ -762,6 +860,20 @@
     <div class="summary-card balance-card">
       <h3 id="balance-title">Số Dư</h3>
       <div class="amount" id="total-balance">0</div>
+    </div>
+  </div>
+  
+  <!-- Savings Goals Section -->
+  <div class="goals-section animate__animated animate__fadeInUp">
+    <h3><i class="fas fa-bullseye"></i> Mục Tiêu Tiết Kiệm</h3>
+    <div class="filter-section">
+      <input type="text" id="goal-name" placeholder="Tên mục tiêu (vd: Mua nhà, Du lịch...)" />
+      <input type="number" id="goal-amount" placeholder="Số tiền mục tiêu" />
+      <input type="date" id="goal-deadline" placeholder="Ngày hoàn thành" />
+      <button onclick="addGoal()" id="add-goal-btn">Thêm Mục Tiêu</button>
+    </div>
+    <div class="goals-cards" id="goals-container">
+      <!-- Goal cards will be added here -->
     </div>
   </div>
   
@@ -907,6 +1019,17 @@
   </div>
 </div>
 
+<!-- Add Goal Modal -->
+<div id="goal-modal" class="modal">
+  <div class="modal-content">
+    <span class="close-modal" onclick="closeGoalModal()">&times;</span>
+    <h2 id="goal-modal-title">Thêm Tiền Tiết Kiệm</h2>
+    <input type="hidden" id="goal-id">
+    <input type="number" id="goal-saved-amount" placeholder="Số tiền đã tiết kiệm">
+    <button onclick="saveToGoal()" id="save-to-goal-btn"><i class="fas fa-plus"></i> Thêm Tiền</button>
+  </div>
+</div>
+
 <script>
   // ==================== CONSTANTS & INITIALIZATION ====================
   const translations = {
@@ -926,6 +1049,7 @@
       transactionHistory: "Lịch sử giao dịch", 
       delete: "Xoá", 
       edit: "Sửa",
+      action: "Hành động",
       confirmDelete: "Bạn có chắc muốn xoá giao dịch này không?", 
       successRegister: "Đăng ký thành công! Bạn có thể đăng nhập ngay.", 
       userExists: "Tài khoản đã tồn tại!", 
@@ -970,6 +1094,19 @@
         savings: "Gợi ý tiết kiệm",
         foodAnalysis: "Phân tích chi tiêu ăn uống",
         categoryAnalysis: "Xem chi tiêu theo danh mục"
+      },
+      goals: {
+        title: "Mục Tiêu Tiết Kiệm",
+        addGoal: "Thêm Mục Tiêu",
+        goalName: "Tên mục tiêu",
+        targetAmount: "Số tiền mục tiêu",
+        deadline: "Ngày hoàn thành",
+        saved: "Đã tiết kiệm",
+        target: "Mục tiêu",
+        daysLeft: "ngày còn lại",
+        completed: "Hoàn thành",
+        addSavings: "Thêm Tiền Tiết Kiệm",
+        addAmount: "Số tiền đã tiết kiệm"
       }
     },
     en: { 
@@ -988,6 +1125,7 @@
       transactionHistory: "Transaction History", 
       delete: "Delete", 
       edit: "Edit",
+      action: "Action",
       confirmDelete: "Are you sure you want to delete this transaction?", 
       successRegister: "Registration successful! You can now log in.", 
       userExists: "User already exists!", 
@@ -1032,6 +1170,19 @@
         savings: "Savings suggestions",
         foodAnalysis: "Food spending analysis",
         categoryAnalysis: "View spending by category"
+      },
+      goals: {
+        title: "Savings Goals",
+        addGoal: "Add Goal",
+        goalName: "Goal name",
+        targetAmount: "Target amount",
+        deadline: "Deadline",
+        saved: "Saved",
+        target: "Target",
+        daysLeft: "days left",
+        completed: "Completed",
+        addSavings: "Add Savings",
+        addAmount: "Amount saved"
       }
     },
     zh: { 
@@ -1050,6 +1201,7 @@
       transactionHistory: "交易記錄", 
       delete: "刪除", 
       edit: "編輯",
+      action: "操作",
       confirmDelete: "您確定要刪除此交易嗎？", 
       successRegister: "註冊成功！您現在可以登入。", 
       userExists: "使用者已存在！", 
@@ -1094,6 +1246,19 @@
         savings: "節省建議",
         foodAnalysis: "飲食支出分析",
         categoryAnalysis: "按類別查看支出"
+      },
+      goals: {
+        title: "儲蓄目標",
+        addGoal: "添加目標",
+        goalName: "目標名稱",
+        targetAmount: "目標金額",
+        deadline: "截止日期",
+        saved: "已儲蓄",
+        target: "目標",
+        daysLeft: "天剩餘",
+        completed: "已完成",
+        addSavings: "添加儲蓄",
+        addAmount: "儲蓄金額"
       }
     },
     fr: { 
@@ -1112,6 +1277,7 @@
       transactionHistory: "Historique des transactions", 
       delete: "Supprimer", 
       edit: "Modifier",
+      action: "Action",
       confirmDelete: "Êtes-vous sûr de vouloir supprimer cette transaction ?", 
       successRegister: "Inscription réussie ! Vous pouvez maintenant vous connecter.", 
       userExists: "L'utilisateur existe déjà !", 
@@ -1156,6 +1322,19 @@
         savings: "Suggestions d'économies",
         foodAnalysis: "Analyse des dépenses alimentaires",
         categoryAnalysis: "Voir les dépenses par catégorie"
+      },
+      goals: {
+        title: "Objectifs d'Épargne",
+        addGoal: "Ajouter un Objectif",
+        goalName: "Nom de l'objectif",
+        targetAmount: "Montant cible",
+        deadline: "Date limite",
+        saved: "Épargné",
+        target: "Objectif",
+        daysLeft: "jours restants",
+        completed: "Terminé",
+        addSavings: "Ajouter des Économies",
+        addAmount: "Montant épargné"
       }
     },
     es: { 
@@ -1174,6 +1353,7 @@
       transactionHistory: "Historial de transacciones", 
       delete: "Eliminar", 
       edit: "Editar",
+      action: "Acción",
       confirmDelete: "¿Estás seguro de que deseas eliminar esta transacción?", 
       successRegister: "¡Registro exitoso! Ahora puedes iniciar sesión.", 
       userExists: "¡El usuario ya existe!", 
@@ -1218,6 +1398,19 @@
         savings: "Sugerencias de ahorro",
         foodAnalysis: "Análisis de gastos en comida",
         categoryAnalysis: "Ver gastos por categoría"
+      },
+      goals: {
+        title: "Objetivos de Ahorro",
+        addGoal: "Agregar Objetivo",
+        goalName: "Nombre del objetivo",
+        targetAmount: "Cantidad objetivo",
+        deadline: "Fecha límite",
+        saved: "Ahorrado",
+        target: "Objetivo",
+        daysLeft: "días restantes",
+        completed: "Completado",
+        addSavings: "Agregar Ahorros",
+        addAmount: "Cantidad ahorrada"
       }
     }
   };
@@ -1226,226 +1419,13 @@
   let users = JSON.parse(localStorage.getItem('users')) || {};
   let transactions = JSON.parse(localStorage.getItem('transactions')) || {};
   let budgets = JSON.parse(localStorage.getItem('budgets')) || {};
+  let goals = JSON.parse(localStorage.getItem('goals')) || {};
   let currentUser = null;
   let currentLang = 'vi';
   let chart = null;
   let chartType = 'bar';
   let kittyAI = null;
   let isDarkMode = localStorage.getItem('darkMode') === 'true';
-
-  // ==================== AI CORE ====================
-  class KittyAI {
-    constructor(transactions) {
-      this.transactions = transactions;
-    }
-    
-    // Phân loại giao dịch tự động bằng AI đơn giản
-    async classifyTransaction(description) {
-      const text = description.toLowerCase();
-      
-      // Logic phân loại cơ bản - có thể thay bằng model AI thực sự
-      if (text.includes('ăn') || text.includes('cơm') || text.includes('food') || text.includes('restaurant') || text.includes('nhà hàng')) {
-        return 'food';
-      } else if (text.includes('mua') || text.includes('shopping') || text.includes('market') || text.includes('siêu thị')) {
-        return 'shopping';
-      } else if (text.includes('grab') || text.includes('taxi') || text.includes('xe') || text.includes('đi lại')) {
-        return 'transport';
-      } else if (text.includes('lương') || text.includes('salary') || text.includes('tiền lương')) {
-        return 'salary';
-      } else if (text.includes('xem phim') || text.includes('cafe') || text.includes('giải trí')) {
-        return 'entertainment';
-      } else if (text.includes('đầu tư') || text.includes('investment') || text.includes('chứng khoán')) {
-        return 'investment';
-      } else {
-        return 'other';
-      }
-    }
-    
-    // Xử lý câu hỏi từ người dùng
-    async processQuery(query) {
-      const lowerQuery = query.toLowerCase();
-      const t = translations[currentLang];
-      
-      // Phân tích câu hỏi và trả lời
-      if (lowerQuery.includes('bao nhiêu') && (lowerQuery.includes('chi') || lowerQuery.includes('tiêu'))) {
-        return this.getSpendingAnalysis(query);
-      } else if (lowerQuery.includes('tiết kiệm') || lowerQuery.includes('save') || lowerQuery.includes('tiết kiệm')) {
-        return this.getSavingsAdvice();
-      } else if (lowerQuery.includes('nhiều nhất') || lowerQuery.includes('most') || lowerQuery.includes('max')) {
-        return this.getHighestSpending();
-      } else if (lowerQuery.includes('chào') || lowerQuery.includes('hello') || lowerQuery.includes('hi')) {
-        return `${t.appTitle}: Xin chào! Tôi là trợ lý tài chính Kitty. Tôi có thể giúp gì cho bạn? 😊`;
-      } else if (lowerQuery.includes('giúp') || lowerQuery.includes('help')) {
-        return `Tôi có thể giúp bạn:\n- Phân tích chi tiêu\n- Gợi ý tiết kiệm\n- Nhận diện thói quen chi tiêu\n\nHãy hỏi cụ thể như:\n"Tôi đã chi bao nhiêu cho ăn uống tháng này?"\n"Danh mục nào tôi chi nhiều nhất?"`;
-      } else if (lowerQuery.includes('ngân sách') || lowerQuery.includes('budget')) {
-        return this.getBudgetAnalysis();
-      } else {
-        return "Tôi không hiểu câu hỏi của bạn. Hãy thử hỏi:\n- Tôi đã chi bao nhiêu cho [danh mục]?\n- Tôi nên tiết kiệm ở đâu?\n- Danh mục nào tôi chi nhiều nhất?";
-      }
-    }
-    
-    // Phân tích chi tiêu
-    getSpendingAnalysis(query) {
-      const t = translations[currentLang];
-      const categoryMap = {
-        'ăn uống': 'food',
-        'mua sắm': 'shopping',
-        'đi lại': 'transport',
-        'giải trí': 'entertainment',
-        'lương': 'salary',
-        'đầu tư': 'investment'
-      };
-      
-      let category = 'all';
-      let timeRange = 'all';
-      
-      // Xác định danh mục từ câu hỏi
-      Object.entries(categoryMap).forEach(([key, value]) => {
-        if (query.includes(key)) category = value;
-      });
-      
-      // Xác định khoảng thời gian
-      if (query.includes('tháng này')) {
-        timeRange = 'thisMonth';
-      } else if (query.includes('tháng trước')) {
-        timeRange = 'lastMonth';
-      } else if (query.includes('tuần này')) {
-        timeRange = 'thisWeek';
-      } else if (query.includes('năm nay')) {
-        timeRange = 'thisYear';
-      }
-      
-      // Lọc giao dịch theo danh mục và thời gian
-      let filtered = this.transactions;
-      
-      if (category !== 'all') {
-        filtered = filtered.filter(t => t.category === category);
-      }
-      
-      const now = new Date();
-      if (timeRange === 'thisMonth') {
-        const currentMonth = now.getMonth();
-        const currentYear = now.getFullYear();
-        filtered = filtered.filter(t => {
-          const date = new Date(t.date);
-          return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
-        });
-      } else if (timeRange === 'lastMonth') {
-        const lastMonth = now.getMonth() - 1;
-        const year = lastMonth < 0 ? now.getFullYear() - 1 : now.getFullYear();
-        filtered = filtered.filter(t => {
-          const date = new Date(t.date);
-          return date.getMonth() === lastMonth && date.getFullYear() === year;
-        });
-      } else if (timeRange === 'thisWeek') {
-        const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        filtered = filtered.filter(t => {
-          const date = new Date(t.date);
-          return date >= oneWeekAgo && date <= now;
-        });
-      } else if (timeRange === 'thisYear') {
-        const currentYear = now.getFullYear();
-        filtered = filtered.filter(t => {
-          const date = new Date(t.date);
-          return date.getFullYear() === currentYear;
-        });
-      }
-      
-      const total = filtered.reduce((sum, t) => sum + t.amount, 0);
-      const count = filtered.length;
-      
-      if (category === 'all' && timeRange === 'all') {
-        return `Bạn đã chi tổng cộng ${formatCurrency(total)} qua ${count} giao dịch`;
-      } else if (category === 'all') {
-        return `Bạn đã chi ${formatCurrency(total)} trong ${timeRange === 'thisMonth' ? 'tháng này' : timeRange === 'lastMonth' ? 'tháng trước' : timeRange === 'thisWeek' ? 'tuần này' : 'năm nay'} qua ${count} giao dịch`;
-      } else {
-        return `Bạn đã chi ${formatCurrency(total)} cho ${t.categories[category]}${timeRange !== 'all' ? ` trong ${timeRange === 'thisMonth' ? 'tháng này' : timeRange === 'lastMonth' ? 'tháng trước' : timeRange === 'thisWeek' ? 'tuần này' : 'năm nay'}` : ''} qua ${count} giao dịch`;
-      }
-    }
-    
-    // Gợi ý tiết kiệm
-    getSavingsAdvice() {
-      const t = translations[currentLang];
-      if (!this.transactions || this.transactions.length === 0) {
-        return "Bạn chưa có giao dịch nào để phân tích";
-      }
-      
-      // Phân tích danh mục chi nhiều nhất
-      const spendingByCategory = {};
-      this.transactions.forEach(t => {
-        if (t.type === 'expense') {
-          if (!spendingByCategory[t.category]) spendingByCategory[t.category] = 0;
-          spendingByCategory[t.category] += t.amount;
-        }
-      });
-      
-      const maxCategory = Object.keys(spendingByCategory).reduce((a, b) => 
-        spendingByCategory[a] > spendingByCategory[b] ? a : b
-      );
-      
-      const adviceMap = {
-        'food': `Bạn chi nhiều nhất cho ${t.categories.food} (${formatCurrency(spendingByCategory.food)}). Có thể tiết kiệm bằng cách:\n- Giảm ăn ngoài\n- Tự nấu ăn nhiều hơn\n- Mua thực phẩm theo kế hoạch`,
-        'shopping': `Bạn chi nhiều nhất cho ${t.categories.shopping} (${formatCurrency(spendingByCategory.shopping)}). Có thể tiết kiệm bằng cách:\n- Hạn chế mua sắm bốc đồng\n- Chờ đợi giảm giá\n- Mua đồ chất lượng tốt để dùng lâu dài`,
-        'transport': `Bạn chi nhiều nhất cho ${t.categories.transport} (${formatCurrency(spendingByCategory.transport)}). Có thể tiết kiệm bằng cách:\n- Đi bộ hoặc xe đạp cho quãng ngắn\n- Sử dụng phương tiện công cộng\n- Đi chung xe với đồng nghiệp`,
-        'entertainment': `Bạn chi nhiều nhất cho ${t.categories.entertainment} (${formatCurrency(spendingByCategory.entertainment)}). Có thể tiết kiệm bằng cách:\n- Giảm các hoạt động giải trí đắt tiền\n- Tìm kiếm các hoạt động miễn phí\n- Tận dụng các chương trình khuyến mãi`,
-        'other': `Bạn chi nhiều cho các khoản khác (${formatCurrency(spendingByCategory.other)}). Hãy xem lại các khoản chi này có thực sự cần thiết không.`
-      };
-      
-      return adviceMap[maxCategory] || "Hãy xem lại các khoản chi không cần thiết trong chi tiêu của bạn";
-    }
-    
-    // Chi tiêu nhiều nhất
-    getHighestSpending() {
-      const t = translations[currentLang];
-      if (!this.transactions || this.transactions.length === 0) {
-        return "Bạn chưa có giao dịch nào để phân tích";
-      }
-      
-      // Tìm giao dịch chi tiêu lớn nhất
-      const expenses = this.transactions.filter(t => t.type === 'expense');
-      if (expenses.length === 0) return "Bạn chưa có giao dịch chi tiêu nào";
-      
-      const highestExpense = expenses.reduce((max, t) => t.amount > max.amount ? t : max);
-      
-      return `Giao dịch chi nhiều nhất của bạn là "${highestExpense.description}" với số tiền ${formatCurrency(highestExpense.amount)} vào ngày ${formatDate(highestExpense.date)}. Danh mục: ${t.categories[highestExpense.category]}`;
-    }
-    
-    // Phân tích ngân sách
-    getBudgetAnalysis() {
-      const t = translations[currentLang];
-      if (!budgets[currentUser] || Object.keys(budgets[currentUser]).length === 0) {
-        return "Bạn chưa đặt ngân sách cho bất kỳ danh mục nào";
-      }
-      
-      let response = "Phân tích ngân sách của bạn:\n";
-      
-      // Tính toán chi tiêu theo danh mục
-      const spendingByCategory = {};
-      this.transactions.forEach(t => {
-        if (t.type === 'expense') {
-          if (!spendingByCategory[t.category]) spendingByCategory[t.category] = 0;
-          spendingByCategory[t.category] += t.amount;
-        }
-      });
-      
-      // Kiểm tra từng ngân sách
-      Object.entries(budgets[currentUser]).forEach(([category, budgetAmount]) => {
-        const spent = spendingByCategory[category] || 0;
-        const remaining = budgetAmount - spent;
-        const percentage = (spent / budgetAmount) * 100;
-        
-        response += `\n${t.categories[category]}: ${formatCurrency(spent)}/${formatCurrency(budgetAmount)} (${percentage.toFixed(0)}%)`;
-        
-        if (remaining > 0) {
-          response += ` - ${t.remaining}: ${formatCurrency(remaining)}`;
-        } else {
-          response += ` - ${t.exceeded}: ${formatCurrency(-remaining)}`;
-        }
-      });
-      
-      return response;
-    }
-  }
 
   // ==================== UTILITY FUNCTIONS ====================
   function showToast(message, type = "success") {
@@ -1567,6 +1547,124 @@
     }
   }
 
+  function openGoalModal(goalId) {
+    document.getElementById('goal-id').value = goalId;
+    document.getElementById('goal-modal').style.display = 'block';
+    changeLanguage();
+  }
+
+  function closeGoalModal() {
+    document.getElementById('goal-modal').style.display = 'none';
+  }
+
+  // ==================== SAVINGS GOALS FUNCTIONS ====================
+  function addGoal() {
+    const name = document.getElementById('goal-name').value.trim();
+    const targetAmount = parseFloat(document.getElementById('goal-amount').value);
+    const deadline = document.getElementById('goal-deadline').value;
+    
+    if (!name || isNaN(targetAmount) || !deadline) {
+      showToast("Vui lòng điền đầy đủ thông tin", "error");
+      return;
+    }
+    
+    if (!goals[currentUser]) {
+      goals[currentUser] = [];
+    }
+    
+    const newGoal = {
+      id: Date.now(),
+      name,
+      targetAmount,
+      saved: 0,
+      deadline,
+      createdAt: new Date().toISOString()
+    };
+    
+    goals[currentUser].push(newGoal);
+    localStorage.setItem('goals', JSON.stringify(goals));
+    
+    // Clear form
+    document.getElementById('goal-name').value = '';
+    document.getElementById('goal-amount').value = '';
+    document.getElementById('goal-deadline').value = '';
+    
+    // Update UI
+    renderGoals();
+    showToast("Đã thêm mục tiêu tiết kiệm", "success");
+  }
+
+  function saveToGoal() {
+    const goalId = parseInt(document.getElementById('goal-id').value);
+    const savedAmount = parseFloat(document.getElementById('goal-saved-amount').value);
+    
+    if (isNaN(savedAmount)) {
+      showToast("Vui lòng nhập số tiền hợp lệ", "error");
+      return;
+    }
+    
+    const goalIndex = goals[currentUser].findIndex(g => g.id === goalId);
+    if (goalIndex !== -1) {
+      goals[currentUser][goalIndex].saved += savedAmount;
+      localStorage.setItem('goals', JSON.stringify(goals));
+      
+      // Clear form
+      document.getElementById('goal-saved-amount').value = '';
+      
+      // Update UI
+      renderGoals();
+      showToast("Đã thêm tiền vào mục tiêu", "success");
+      closeGoalModal();
+    } else {
+      showToast("Không tìm thấy mục tiêu", "error");
+    }
+  }
+
+  function deleteGoal(goalId) {
+    if (confirm("Bạn có chắc muốn xoá mục tiêu này không?")) {
+      goals[currentUser] = goals[currentUser].filter(g => g.id !== goalId);
+      localStorage.setItem('goals', JSON.stringify(goals));
+      renderGoals();
+      showToast("Đã xóa mục tiêu", "success");
+    }
+  }
+
+  function renderGoals() {
+    const container = document.getElementById('goals-container');
+    container.innerHTML = '';
+    
+    if (!goals[currentUser] || goals[currentUser].length === 0) {
+      container.innerHTML = '<p id="no-goals-message">Bạn chưa đặt mục tiêu tiết kiệm nào</p>';
+      return;
+    }
+    
+    const t = translations[currentLang];
+    
+    goals[currentUser].forEach(goal => {
+      const percentage = Math.min((goal.saved / goal.targetAmount) * 100, 100);
+      const daysLeft = Math.ceil((new Date(goal.deadline) - new Date()) / (1000 * 60 * 60 * 24));
+      
+      const card = document.createElement('div');
+      card.className = 'goal-card animate__animated animate__fadeIn';
+      
+      card.innerHTML = `
+        <h4>${goal.name}</h4>
+        <div class="amount">${t.goals.saved}: ${formatCurrency(goal.saved)} / ${t.goals.target}: ${formatCurrency(goal.targetAmount)}</div>
+        <div class="progress-container">
+          <div class="progress-bar" style="width: ${percentage}%"></div>
+        </div>
+        <div class="goal-days-left">${daysLeft > 0 ? daysLeft + ' ' + t.goals.daysLeft : 'Đã quá hạn'}</div>
+        ${goal.saved >= goal.targetAmount ? '<div class="goal-completed">' + t.goals.completed + '</div>' : ''}
+        <div class="goal-actions">
+          <button class="edit-btn" onclick="openGoalModal(${goal.id})">${t.edit}</button>
+          <button class="delete-btn" onclick="deleteGoal(${goal.id})">${t.delete}</button>
+        </div>
+      `;
+      
+      container.appendChild(card);
+    });
+  }
+
   // ==================== BUDGET FUNCTIONS ====================
   function setBudget() {
     const category = document.getElementById('budget-category').value;
@@ -1639,124 +1737,239 @@
   }
 
   // ==================== AI INTEGRATION ====================
-  function initAI() {
-    if (currentUser && transactions[currentUser]) {
-      kittyAI = new KittyAI(transactions[currentUser]);
+  class KittyAI {
+    constructor(transactions) {
+      this.transactions = transactions;
+    }
+    
+    async classifyTransaction(description) {
+      const text = description.toLowerCase();
       
-      // Tự động phân loại khi nhập mô tả giao dịch
-      document.getElementById('description').addEventListener('blur', async function() {
-        const desc = this.value.trim();
-        if (desc) {
-          const category = await kittyAI.classifyTransaction(desc);
-          document.getElementById('category').value = category;
-          showToast(`Đã tự động phân loại thành: ${translations[currentLang].categories[category]}`, "success");
+      if (text.includes('ăn') || text.includes('cơm') || text.includes('food') || text.includes('restaurant') || text.includes('nhà hàng')) {
+        return 'food';
+      } else if (text.includes('mua') || text.includes('shopping') || text.includes('market') || text.includes('siêu thị')) {
+        return 'shopping';
+      } else if (text.includes('grab') || text.includes('taxi') || text.includes('xe') || text.includes('đi lại')) {
+        return 'transport';
+      } else if (text.includes('lương') || text.includes('salary') || text.includes('tiền lương')) {
+        return 'salary';
+      } else if (text.includes('xem phim') || text.includes('cafe') || text.includes('giải trí')) {
+        return 'entertainment';
+      } else if (text.includes('đầu tư') || text.includes('investment') || text.includes('chứng khoán')) {
+        return 'investment';
+      } else {
+        return 'other';
+      }
+    }
+    
+    async processQuery(query) {
+      const lowerQuery = query.toLowerCase();
+      const t = translations[currentLang];
+      
+      if (lowerQuery.includes('bao nhiêu') && (lowerQuery.includes('chi') || lowerQuery.includes('tiêu'))) {
+        return this.getSpendingAnalysis(query);
+      } else if (lowerQuery.includes('tiết kiệm') || lowerQuery.includes('save') || lowerQuery.includes('tiết kiệm')) {
+        return this.getSavingsAdvice();
+      } else if (lowerQuery.includes('nhiều nhất') || lowerQuery.includes('most') || lowerQuery.includes('max')) {
+        return this.getHighestSpending();
+      } else if (lowerQuery.includes('chào') || lowerQuery.includes('hello') || lowerQuery.includes('hi')) {
+        return `${t.appTitle}: Xin chào! Tôi là trợ lý tài chính Kitty. Tôi có thể giúp gì cho bạn? 😊`;
+      } else if (lowerQuery.includes('giúp') || lowerQuery.includes('help')) {
+        return `Tôi có thể giúp bạn:\n- Phân tích chi tiêu\n- Gợi ý tiết kiệm\n- Nhận diện thói quen chi tiêu\n\nHãy hỏi cụ thể như:\n"Tôi đã chi bao nhiêu cho ăn uống tháng này?"\n"Danh mục nào tôi chi nhiều nhất?"`;
+      } else if (lowerQuery.includes('ngân sách') || lowerQuery.includes('budget')) {
+        return this.getBudgetAnalysis();
+      } else if (lowerQuery.includes('mục tiêu') || lowerQuery.includes('goal')) {
+        return this.getGoalsAnalysis();
+      } else {
+        return "Tôi không hiểu câu hỏi của bạn. Hãy thử hỏi:\n- Tôi đã chi bao nhiêu cho [danh mục]?\n- Tôi nên tiết kiệm ở đâu?\n- Danh mục nào tôi chi nhiều nhất?";
+      }
+    }
+    
+    getSpendingAnalysis(query) {
+      const t = translations[currentLang];
+      const categoryMap = {
+        'ăn uống': 'food',
+        'mua sắm': 'shopping',
+        'đi lại': 'transport',
+        'giải trí': 'entertainment',
+        'lương': 'salary',
+        'đầu tư': 'investment'
+      };
+      
+      let category = 'all';
+      let timeRange = 'all';
+      
+      Object.entries(categoryMap).forEach(([key, value]) => {
+        if (query.includes(key)) category = value;
+      });
+      
+      if (query.includes('tháng này')) {
+        timeRange = 'thisMonth';
+      } else if (query.includes('tháng trước')) {
+        timeRange = 'lastMonth';
+      } else if (query.includes('tuần này')) {
+        timeRange = 'thisWeek';
+      } else if (query.includes('năm nay')) {
+        timeRange = 'thisYear';
+      }
+      
+      let filtered = this.transactions;
+      
+      if (category !== 'all') {
+        filtered = filtered.filter(t => t.category === category);
+      }
+      
+      const now = new Date();
+      if (timeRange === 'thisMonth') {
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        filtered = filtered.filter(t => {
+          const date = new Date(t.date);
+          return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+        });
+      } else if (timeRange === 'lastMonth') {
+        const lastMonth = now.getMonth() - 1;
+        const year = lastMonth < 0 ? now.getFullYear() - 1 : now.getFullYear();
+        filtered = filtered.filter(t => {
+          const date = new Date(t.date);
+          return date.getMonth() === lastMonth && date.getFullYear() === year;
+        });
+      } else if (timeRange === 'thisWeek') {
+        const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        filtered = filtered.filter(t => {
+          const date = new Date(t.date);
+          return date >= oneWeekAgo && date <= now;
+        });
+      } else if (timeRange === 'thisYear') {
+        const currentYear = now.getFullYear();
+        filtered = filtered.filter(t => {
+          const date = new Date(t.date);
+          return date.getFullYear() === currentYear;
+        });
+      }
+      
+      const total = filtered.reduce((sum, t) => sum + t.amount, 0);
+      const count = filtered.length;
+      
+      if (category === 'all' && timeRange === 'all') {
+        return `Bạn đã chi tổng cộng ${formatCurrency(total)} qua ${count} giao dịch`;
+      } else if (category === 'all') {
+        return `Bạn đã chi ${formatCurrency(total)} trong ${timeRange === 'thisMonth' ? 'tháng này' : timeRange === 'lastMonth' ? 'tháng trước' : timeRange === 'thisWeek' ? 'tuần này' : 'năm nay'} qua ${count} giao dịch`;
+      } else {
+        return `Bạn đã chi ${formatCurrency(total)} cho ${t.categories[category]}${timeRange !== 'all' ? ` trong ${timeRange === 'thisMonth' ? 'tháng này' : timeRange === 'lastMonth' ? 'tháng trước' : timeRange === 'thisWeek' ? 'tuần này' : 'năm nay'}` : ''} qua ${count} giao dịch`;
+      }
+    }
+    
+    getSavingsAdvice() {
+      const t = translations[currentLang];
+      const savingsAdvice = [
+        "Hãy thử tiết kiệm 20% thu nhập mỗi tháng",
+        "Xem xét mở tài khoản tiết kiệm với lãi suất cao",
+        "Giảm chi tiêu cho ăn uống ngoài bằng cách nấu ăn tại nhà",
+        "Đặt mục tiêu tiết kiệm nhỏ trước, sau đó tăng dần",
+        "Tự động chuyển tiền vào tài khoản tiết kiệm vào ngày nhận lương"
+      ];
+      
+      const randomAdvice = savingsAdvice[Math.floor(Math.random() * savingsAdvice.length)];
+      return `💡 Gợi ý tiết kiệm:\n${randomAdvice}\n\nBạn có muốn tôi giúp đặt mục tiêu tiết kiệm không?`;
+    }
+    
+    getHighestSpending() {
+      const t = translations[currentLang];
+      const spendingByCategory = {};
+      
+      this.transactions.forEach(t => {
+        if (t.type === 'expense') {
+          if (!spendingByCategory[t.category]) spendingByCategory[t.category] = 0;
+          spendingByCategory[t.category] += t.amount;
         }
       });
-    }
-  }
-  
-  async function askAI(query = null) {
-    if (!kittyAI) return;
-    
-    const inputElement = document.getElementById('ai-query-input');
-    const chatContainer = document.getElementById('ai-chat-container');
-    const submitBtn = document.getElementById('ai-submit-btn');
-    
-    const question = query || inputElement.value.trim();
-    if (!question) return;
-    
-    // Hiển thị câu hỏi của người dùng
-    const userQueryElement = document.createElement('div');
-    userQueryElement.className = 'user-query';
-    userQueryElement.textContent = `Bạn: ${question}`;
-    chatContainer.appendChild(userQueryElement);
-    
-    if (!query) inputElement.value = '';
-    
-    // Hiển thị trạng thái loading
-    submitBtn.disabled = true;
-    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xử lý';
-    
-    try {
-      // Xử lý câu hỏi bằng AI
-      const response = await kittyAI.processQuery(question);
       
-      // Hiển thị câu trả lời với hiệu ứng gõ từng chữ
-      const responseElement = document.createElement('div');
-      responseElement.className = 'ai-response';
-      chatContainer.appendChild(responseElement);
-      
-      let i = 0;
-      const speed = 20; // tốc độ hiển thị (ms mỗi ký tự)
-      function typeWriter() {
-        if (i < response.length) {
-          responseElement.innerHTML = `Kitty: ${response.substring(0, i+1)}${i < response.length - 1 ? '|' : ''}`;
-          i++;
-          setTimeout(typeWriter, speed);
-        }
+      if (Object.keys(spendingByCategory).length === 0) {
+        return "Bạn chưa có chi tiêu nào để phân tích";
       }
-      typeWriter();
       
-    } catch (error) {
-      chatContainer.innerHTML += `<div class="ai-response">Xin lỗi, có lỗi xảy ra khi xử lý yêu cầu</div>`;
-      console.error("AI Error:", error);
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Gửi';
-      chatContainer.scrollTop = chatContainer.scrollHeight;
+      const highestCategory = Object.entries(spendingByCategory).reduce((max, current) => 
+        current[1] > max[1] ? current : max
+      );
+      
+      return `Danh mục bạn chi nhiều nhất là ${t.categories[highestCategory[0]]} với ${formatCurrency(highestCategory[1])}`;
+    }
+    
+    getBudgetAnalysis() {
+      const t = translations[currentLang];
+      
+      if (!budgets[currentUser] || Object.keys(budgets[currentUser]).length === 0) {
+        return "Bạn chưa đặt ngân sách nào. Hãy sử dụng phần 'Quản lý ngân sách' để đặt giới hạn chi tiêu.";
+      }
+      
+      let analysis = "Phân tích ngân sách của bạn:\n";
+      
+      // Tính toán chi tiêu theo danh mục
+      const spendingByCategory = {};
+      this.transactions.forEach(t => {
+        if (t.type === 'expense') {
+          if (!spendingByCategory[t.category]) spendingByCategory[t.category] = 0;
+          spendingByCategory[t.category] += t.amount;
+        }
+      });
+      
+      Object.entries(budgets[currentUser]).forEach(([category, budgetAmount]) => {
+        const spent = spendingByCategory[category] || 0;
+        const remaining = budgetAmount - spent;
+        const percentage = (spent / budgetAmount) * 100;
+        
+        analysis += `\n${t.categories[category]}: ${formatCurrency(spent)}/${formatCurrency(budgetAmount)} (${percentage.toFixed(0)}%)`;
+        
+        if (remaining < 0) {
+          analysis += ` - Đã vượt ${formatCurrency(Math.abs(remaining))}`;
+        } else {
+          analysis += ` - Còn lại ${formatCurrency(remaining)}`;
+        }
+      });
+      
+      return analysis;
+    }
+    
+    getGoalsAnalysis() {
+      const t = translations[currentLang];
+      
+      if (!goals[currentUser] || goals[currentUser].length === 0) {
+        return "Bạn chưa đặt mục tiêu tiết kiệm nào. Hãy sử dụng phần 'Mục tiêu tiết kiệm' để bắt đầu.";
+      }
+      
+      let analysis = "Tiến độ mục tiêu của bạn:\n";
+      
+      goals[currentUser].forEach(goal => {
+        const percentage = (goal.saved / goal.targetAmount) * 100;
+        const daysLeft = Math.ceil((new Date(goal.deadline) - new Date()) / (1000 * 60 * 60 * 24));
+        
+        analysis += `\n${goal.name}: ${formatCurrency(goal.saved)}/${formatCurrency(goal.targetAmount)} (${percentage.toFixed(0)}%)`;
+        
+        if (daysLeft > 0) {
+          analysis += ` - ${daysLeft} ${t.goals.daysLeft}`;
+        } else {
+          analysis += " - Đã quá hạn";
+        }
+      });
+      
+      return analysis;
     }
   }
 
-  // ==================== AUTH FUNCTIONS ====================
-  function showLogin() {
-    document.getElementById('register-section').classList.remove('animate__fadeIn');
-    document.getElementById('register-section').style.display = 'none';
-    document.getElementById('auth-section').classList.add('animate__fadeIn');
-    document.getElementById('auth-section').style.display = 'block';
-    document.getElementById('username').focus();
-    changeLanguage();
-  }
-
+  // ==================== AUTHENTICATION FUNCTIONS ====================
   function showRegister() {
-    document.getElementById('auth-section').classList.remove('animate__fadeIn');
     document.getElementById('auth-section').style.display = 'none';
-    document.getElementById('register-section').classList.add('animate__fadeIn');
     document.getElementById('register-section').style.display = 'block';
     document.getElementById('new-username').focus();
     changeLanguage();
   }
 
-  function login() {
-    const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value.trim();
-    
-    if (!username || !password) {
-      showToast(translations[currentLang].wrongCredentials, "error");
-      return;
-    }
-    
-    if (users[username] && users[username] === password) {
-      currentUser = username;
-      
-      // Initialize transactions if not exists
-      if (!transactions[currentUser]) {
-        transactions[currentUser] = [];
-        localStorage.setItem('transactions', JSON.stringify(transactions));
-      }
-      
-      // Initialize budgets if not exists
-      if (!budgets[currentUser]) {
-        budgets[currentUser] = {};
-        localStorage.setItem('budgets', JSON.stringify(budgets));
-      }
-      
-      showToast(translations[currentLang].loginSuccess, "success");
-      document.getElementById('username').value = '';
-      document.getElementById('password').value = '';
-      showApp();
-    } else {
-      showToast(translations[currentLang].wrongCredentials, "error");
-    }
+  function showLogin() {
+    document.getElementById('register-section').style.display = 'none';
+    document.getElementById('auth-section').style.display = 'block';
+    document.getElementById('username').focus();
+    changeLanguage();
   }
 
   function register() {
@@ -1764,104 +1977,92 @@
     const password = document.getElementById('new-password').value.trim();
     
     if (!username || !password) {
-      showToast("Vui lòng nhập đầy đủ thông tin", "error");
+      showToast("Vui lòng điền đầy đủ thông tin", "error");
       return;
     }
     
     if (users[username]) {
-      showToast(translations[currentLang].userExists, "error");
+      showToast("Tài khoản đã tồn tại!", "error");
+      return;
+    }
+    
+    // Tạo tài khoản mới
+    users[username] = password;
+    transactions[username] = [];
+    budgets[username] = {};
+    goals[username] = [];
+    
+    localStorage.setItem('users', JSON.stringify(users));
+    localStorage.setItem('transactions', JSON.stringify(transactions));
+    localStorage.setItem('budgets', JSON.stringify(budgets));
+    localStorage.setItem('goals', JSON.stringify(goals));
+    
+    showToast("Đăng ký thành công! Bạn có thể đăng nhập ngay.", "success");
+    showLogin();
+  }
+
+  function login() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value.trim();
+    
+    if (!username || !password) {
+      showToast("Vui lòng điền đầy đủ thông tin", "error");
+      return;
+    }
+    
+    if (users[username] && users[username] === password) {
+      currentUser = username;
+      
+      // Khởi tạo AI với dữ liệu giao dịch
+      kittyAI = new KittyAI(transactions[currentUser]);
+      
+      // Hiển thị ứng dụng
+      document.getElementById('auth-section').style.display = 'none';
+      document.getElementById('app-section').style.display = 'block';
+      
+      // Load dữ liệu
+      renderTransactions();
+      updateSummary();
+      renderChart();
+      renderBudgetCards();
+      renderGoals();
+      
+      showToast("Đăng nhập thành công", "success");
+      changeLanguage();
     } else {
-      users[username] = password;
-      localStorage.setItem('users', JSON.stringify(users));
-      
-      // Create empty transactions for new user
-      if (!transactions[username]) {
-        transactions[username] = [];
-        localStorage.setItem('transactions', JSON.stringify(transactions));
-      }
-      
-      // Create empty budgets for new user
-      if (!budgets[username]) {
-        budgets[username] = {};
-        localStorage.setItem('budgets', JSON.stringify(budgets));
-      }
-      
-      showToast(translations[currentLang].successRegister, "success");
-      document.getElementById('new-username').value = '';
-      document.getElementById('new-password').value = '';
-      showLogin();
+      showToast("Sai tên người dùng hoặc mật khẩu!", "error");
     }
   }
 
   function logout() {
     currentUser = null;
-    kittyAI = null;
-    showLogin();
-    if (chart) {
-      chart.destroy();
-      chart = null;
-    }
-  }
-
-  function showApp() {
-    document.getElementById('auth-section').style.display = 'none';
-    document.getElementById('register-section').style.display = 'none';
-    document.getElementById('app-section').style.display = 'block';
-    
-    // Set current date as default
-    document.getElementById('date').valueAsDate = new Date();
-    document.getElementById('filter-month').value = getCurrentMonth();
-    
-    renderTransactions();
-    updateSummary();
-    renderChart();
-    renderBudgetCards();
-    changeLanguage();
-    
-    // Apply dark mode if enabled
-    document.body.classList.toggle('dark-mode', isDarkMode);
-    const icon = document.getElementById('dark-mode-icon');
-    if (isDarkMode) {
-      icon.classList.remove('fa-moon');
-      icon.classList.add('fa-sun');
-    } else {
-      icon.classList.remove('fa-sun');
-      icon.classList.add('fa-moon');
-    }
-    
-    // Khởi tạo AI
-    initAI();
+    document.getElementById('app-section').style.display = 'none';
+    document.getElementById('auth-section').style.display = 'block';
+    document.getElementById('username').value = '';
+    document.getElementById('password').value = '';
+    document.getElementById('username').focus();
+    showToast("Đã đăng xuất", "info");
   }
 
   // ==================== TRANSACTION FUNCTIONS ====================
   function addTransaction() {
     const description = document.getElementById('description').value.trim();
     const amount = parseFloat(document.getElementById('amount').value);
-    const type = document.getElementById('type').value;
     const category = document.getElementById('category').value;
-    let date = document.getElementById('date').value;
+    const type = document.getElementById('type').value;
+    const date = document.getElementById('date').value || new Date().toISOString().split('T')[0];
     
     if (!description || isNaN(amount) || !date) {
       showToast("Vui lòng điền đầy đủ thông tin", "error");
       return;
     }
     
-    // If date is empty, use today's date
-    if (!date) {
-      const today = new Date();
-      date = today.toISOString().split('T')[0];
-    }
-    
-    if (!transactions[currentUser]) {
-      transactions[currentUser] = [];
-    }
-    
     const newTransaction = {
-      id: Date.now(), // Unique ID for each transaction
+      id: Date.now(),
       description,
       amount,
-      type,
       category,
+      type,
       date
     };
     
@@ -1871,6 +2072,7 @@
     // Clear form
     document.getElementById('description').value = '';
     document.getElementById('amount').value = '';
+    document.getElementById('date').value = '';
     
     // Update UI
     renderTransactions();
@@ -1879,248 +2081,352 @@
     renderBudgetCards();
     
     // Cập nhật AI với dữ liệu mới
-    if (kittyAI) {
-      kittyAI = new KittyAI(transactions[currentUser]);
-    }
+    kittyAI = new KittyAI(transactions[currentUser]);
     
-    showToast(translations[currentLang].addTransaction + " thành công!", "success");
+    showToast("Đã thêm giao dịch", "success");
   }
 
   function deleteTransaction(id) {
-    if (confirm(translations[currentLang].confirmDelete)) {
+    const t = translations[currentLang];
+    if (confirm(t.confirmDelete)) {
       transactions[currentUser] = transactions[currentUser].filter(t => t.id !== id);
       localStorage.setItem('transactions', JSON.stringify(transactions));
+      
+      // Update UI
       renderTransactions();
       updateSummary();
       renderChart();
       renderBudgetCards();
       
       // Cập nhật AI với dữ liệu mới
-      if (kittyAI) {
-        kittyAI = new KittyAI(transactions[currentUser]);
-      }
+      kittyAI = new KittyAI(transactions[currentUser]);
       
       showToast("Đã xóa giao dịch", "success");
     }
   }
 
-  function filterTransactions() {
-    const searchText = document.getElementById('search-input').value.toLowerCase();
+  function renderTransactions() {
+    const tbody = document.getElementById('transaction-body');
+    tbody.innerHTML = '';
+    
+    if (!transactions[currentUser] || transactions[currentUser].length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" id="no-transactions-message">${t.noTransactions}</td></tr>`;
+      return;
+    }
+    
+    const searchTerm = document.getElementById('search-input').value.toLowerCase();
     const filterType = document.getElementById('filter-type').value;
     const filterCategory = document.getElementById('filter-category').value;
     const filterMonth = document.getElementById('filter-month').value;
     
-    let filtered = transactions[currentUser] || [];
+    const filtered = transactions[currentUser]
+      .filter(t => {
+        const matchesSearch = t.description.toLowerCase().includes(searchTerm);
+        const matchesType = filterType === 'all' || t.type === filterType;
+        const matchesCategory = filterCategory === 'all' || t.category === filterCategory;
+        const matchesMonth = !filterMonth || t.date.startsWith(filterMonth);
+        
+        return matchesSearch && matchesType && matchesCategory && matchesMonth;
+      })
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
     
-    // Apply filters
-    if (searchText) {
-      filtered = filtered.filter(t => 
-        t.description.toLowerCase().includes(searchText)
-      );
+    if (filtered.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" id="no-filtered-transactions">Không tìm thấy giao dịch phù hợp</td></tr>`;
+      return;
     }
     
-    if (filterType !== 'all') {
-      filtered = filtered.filter(t => t.type === filterType);
-    }
-    
-    if (filterCategory !== 'all') {
-      filtered = filtered.filter(t => t.category === filterCategory);
-    }
-    
-    if (filterMonth) {
-      filtered = filtered.filter(t => {
-        const transactionDate = new Date(t.date);
-        const transactionMonth = transactionDate.getFullYear() + '-' + 
-                              String(transactionDate.getMonth() + 1).padStart(2, '0');
-        return transactionMonth === filterMonth;
-      });
-    }
-    
-    return filtered;
-  }
-
-  function renderTransactions() {
-    const tbody = document.getElementById("transaction-body");
-    tbody.innerHTML = '';
-    
-    const filteredTransactions = filterTransactions();
-    const t = translations[currentLang];
-    
-    if (filteredTransactions.length > 0) {
-      // Sort by date (newest first)
-      const sortedTransactions = [...filteredTransactions].sort((a, b) => 
-        new Date(b.date) - new Date(a.date)
-      );
+    filtered.forEach(t => {
+      const row = document.createElement('tr');
+      row.className = 'animate__animated animate__fadeIn';
       
-      sortedTransactions.forEach((transaction) => {
-        const row = document.createElement("tr");
-        row.className = "animate__animated animate__fadeIn";
-        row.innerHTML = `
-          <td>${formatDate(transaction.date)}</td>
-          <td>${transaction.description}</td>
-          <td><span class="category-tag">${t.categories[transaction.category]}</span></td>
-          <td>${t[transaction.type]}</td>
-          <td class="${transaction.type === 'income' ? 'income-amount' : 'expense-amount'}">
-            ${transaction.type === 'income' ? '+' : '-'}${formatCurrency(transaction.amount)}
-          </td>
-          <td>
-            <button class="edit-btn" onclick="openEditModal(${JSON.stringify(transaction).replace(/"/g, '&quot;')})">${t.edit}</button>
-            <button class="delete-btn" onclick="deleteTransaction(${transaction.id})">${t.delete}</button>
-          </td>
-        `;
-        tbody.appendChild(row);
-      });
-    } else {
-      const row = document.createElement("tr");
-      row.innerHTML = `<td colspan="6" class="no-transactions">${t.noTransactions}</td>`;
+      row.innerHTML = `
+        <td>${formatDate(t.date)}</td>
+        <td>${t.description}</td>
+        <td><span class="category-tag">${t.categories[t.category]}</span></td>
+        <td>${t.type === 'income' ? '<span style="color: var(--success-color);">' + t.income + '</span>' : '<span style="color: var(--danger-color);">' + t.expense + '</span>'}</td>
+        <td>${formatCurrency(t.amount)}</td>
+        <td>
+          <button class="edit-btn" onclick="openEditModal(${JSON.stringify(t).replace(/"/g, '&quot;')})">${t.edit}</button>
+          <button class="delete-btn" onclick="deleteTransaction(${t.id})">${t.delete}</button>
+        </td>
+      `;
+      
       tbody.appendChild(row);
-    }
+    });
   }
 
   function updateSummary() {
     if (!transactions[currentUser]) return;
     
-    const totalIncome = transactions[currentUser]
+    const income = transactions[currentUser]
       .filter(t => t.type === 'income')
       .reduce((sum, t) => sum + t.amount, 0);
     
-    const totalExpense = transactions[currentUser]
+    const expense = transactions[currentUser]
       .filter(t => t.type === 'expense')
       .reduce((sum, t) => sum + t.amount, 0);
     
-    const balance = totalIncome - totalExpense;
+    const balance = income - expense;
     
-    document.getElementById('total-income').textContent = formatCurrency(totalIncome);
-    document.getElementById('total-expense').textContent = formatCurrency(totalExpense);
+    document.getElementById('total-income').textContent = formatCurrency(income);
+    document.getElementById('total-expense').textContent = formatCurrency(expense);
     document.getElementById('total-balance').textContent = formatCurrency(balance);
   }
 
-  function changeChartType(type) {
-    chartType = type;
-    renderChart();
-    
-    // Update active tab
-    document.getElementById('bar-chart-tab').classList.remove('active');
-    document.getElementById('pie-chart-tab').classList.remove('active');
-    document.getElementById('line-chart-tab').classList.remove('active');
-    document.getElementById(`${type}-chart-tab`).classList.add('active');
-  }
-
+  // ==================== CHART FUNCTIONS ====================
   function renderChart() {
-    const ctx = document.getElementById('stats-chart');
+    const ctx = document.getElementById('stats-chart').getContext('2d');
     
-    // Destroy previous chart if exists
     if (chart) {
       chart.destroy();
     }
     
-    if (!transactions[currentUser] || transactions[currentUser].length === 0) {
-      ctx.style.display = 'none';
-      return;
-    }
+    const t = translations[currentLang];
     
-    ctx.style.display = 'block';
-    
-    // Group by category
+    // Group transactions by category
     const categories = {};
     transactions[currentUser].forEach(t => {
       if (!categories[t.category]) {
         categories[t.category] = { income: 0, expense: 0 };
       }
-      categories[t.category][t.type] += t.amount;
+      
+      if (t.type === 'income') {
+        categories[t.category].income += t.amount;
+      } else {
+        categories[t.category].expense += t.amount;
+      }
     });
     
-    const categoryLabels = Object.keys(categories).map(cat => translations[currentLang].categories[cat]);
+    const categoryLabels = Object.keys(categories).map(cat => t.categories[cat]);
     const incomeData = Object.values(categories).map(c => c.income);
     const expenseData = Object.values(categories).map(c => c.expense);
     
-    const chartConfig = {
-      type: chartType,
-      data: {
-        labels: categoryLabels,
-        datasets: [
-          {
-            label: translations[currentLang].income,
-            data: incomeData,
-            backgroundColor: '#06d6a0',
-            borderColor: '#06d6a0',
-            borderWidth: 1
-          },
-          {
-            label: translations[currentLang].expense,
-            data: expenseData,
-            backgroundColor: '#ef476f',
-            borderColor: '#ef476f',
-            borderWidth: 1
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        scales: {
-          y: {
-            beginAtZero: true
-          }
-        }
-      }
-    };
+    const colors = [
+      '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', 
+      '#9966FF', '#FF9F40', '#8AC24A', '#FF5722'
+    ];
     
-    // Adjust config for pie chart
+    let chartConfig;
+    
     if (chartType === 'pie') {
-      chartConfig.data.datasets = [{
-        label: 'Transactions',
-        data: [...incomeData, ...expenseData],
-        backgroundColor: [
-          '#06d6a0', '#ef476f', '#118ab2', '#ffd166', '#073b4c', 
-          '#7209b7', '#f72585', '#4cc9f0', '#4895ef', '#4361ee'
-        ],
-        borderColor: '#fff',
-        borderWidth: 1
-      }];
-      
-      chartConfig.options.plugins = {
-        legend: {
-          position: 'right'
+      chartConfig = {
+        type: 'pie',
+        data: {
+          labels: categoryLabels,
+          datasets: [{
+            data: expenseData,
+            backgroundColor: colors,
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: t.chartTitle
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.label}: ${formatCurrency(context.raw)}`;
+                }
+              }
+            }
+          }
         }
       };
-    }
-    
-    // Adjust config for line chart
-    if (chartType === 'line') {
-      chartConfig.data.datasets[0].fill = false;
-      chartConfig.data.datasets[1].fill = false;
-      chartConfig.data.datasets[0].tension = 0.1;
-      chartConfig.data.datasets[1].tension = 0.1;
+    } else if (chartType === 'line') {
+      chartConfig = {
+        type: 'line',
+        data: {
+          labels: categoryLabels,
+          datasets: [
+            {
+              label: t.income,
+              data: incomeData,
+              borderColor: '#06D6A0',
+              backgroundColor: 'rgba(6, 214, 160, 0.1)',
+              tension: 0.1,
+              fill: true
+            },
+            {
+              label: t.expense,
+              data: expenseData,
+              borderColor: '#EF476F',
+              backgroundColor: 'rgba(239, 71, 111, 0.1)',
+              tension: 0.1,
+              fill: true
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: t.chartTitle
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.dataset.label}: ${formatCurrency(context.raw)}`;
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(value) {
+                  return formatCurrency(value);
+                }
+              }
+            }
+          }
+        }
+      };
+    } else {
+      // Default to bar chart
+      chartConfig = {
+        type: 'bar',
+        data: {
+          labels: categoryLabels,
+          datasets: [
+            {
+              label: t.income,
+              data: incomeData,
+              backgroundColor: 'rgba(6, 214, 160, 0.7)',
+              borderColor: 'rgba(6, 214, 160, 1)',
+              borderWidth: 1
+            },
+            {
+              label: t.expense,
+              data: expenseData,
+              backgroundColor: 'rgba(239, 71, 111, 0.7)',
+              borderColor: 'rgba(239, 71, 111, 1)',
+              borderWidth: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: {
+              display: true,
+              text: t.chartTitle
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `${context.dataset.label}: ${formatCurrency(context.raw)}`;
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(value) {
+                  return formatCurrency(value);
+                }
+              }
+            }
+          }
+        }
+      };
     }
     
     chart = new Chart(ctx, chartConfig);
   }
 
+  function changeChartType(type) {
+    chartType = type;
+    
+    // Update active tab
+    document.querySelectorAll('.chart-tab').forEach(tab => {
+      tab.classList.remove('active');
+    });
+    
+    document.getElementById(`${type}-chart-tab`).classList.add('active');
+    
+    // Re-render chart
+    renderChart();
+  }
+
+  // ==================== AI FUNCTIONS ====================
+  function askAI(query = null) {
+    const input = query || document.getElementById('ai-query-input').value.trim();
+    
+    if (!input) return;
+    
+    const chatContainer = document.getElementById('ai-chat-container');
+    
+    // Add user query to chat
+    const userQuery = document.createElement('div');
+    userQuery.className = 'user-query';
+    userQuery.textContent = input;
+    chatContainer.appendChild(userQuery);
+    
+    // Clear input if not from suggestion
+    if (!query) {
+      document.getElementById('ai-query-input').value = '';
+    }
+    
+    // Show loading indicator
+    const loading = document.createElement('div');
+    loading.className = 'ai-loading';
+    chatContainer.appendChild(loading);
+    
+    // Scroll to bottom
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+    
+    // Simulate AI processing delay
+    setTimeout(() => {
+      // Remove loading indicator
+      chatContainer.removeChild(loading);
+      
+      // Get AI response
+      const response = kittyAI.processQuery(input);
+      
+      // Add AI response to chat
+      const aiResponse = document.createElement('div');
+      aiResponse.className = 'ai-response';
+      aiResponse.innerHTML = response.replace(/\n/g, '<br>');
+      chatContainer.appendChild(aiResponse);
+      
+      // Scroll to bottom
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }, 1000);
+  }
+
+  // ==================== EXPORT FUNCTIONS ====================
   function exportToCSV() {
     if (!transactions[currentUser] || transactions[currentUser].length === 0) {
-      showToast("Không có dữ liệu để xuất", "warning");
+      showToast("Không có dữ liệu để xuất", "error");
       return;
     }
     
-    const filteredTransactions = filterTransactions();
     const t = translations[currentLang];
     
-    let csv = 'Date,Description,Category,Type,Amount\n';
+    let csv = `${t.date},${t.description},${t.category},${t.type},${t.amount}\n`;
     
-    filteredTransactions.forEach(t => {
-      csv += `"${t.date}","${t.description}","${t.categories[t.category]}","${t[t.type]}","${t.type === 'income' ? '+' : '-'}${t.amount}"\n`;
+    transactions[currentUser].forEach(t => {
+      csv += `${t.date},"${t.description}",${t.categories[t.category]},${t.type === 'income' ? t.income : t.expense},${t.amount}\n`;
     });
     
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `KittyMoney_${new Date().toISOString().split('T')[0]}.csv`);
+    link.download = `kittymoney_export_${new Date().toISOString().slice(0, 10)}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     
-    showToast("Xuất CSV thành công", "success");
+    showToast("Đã xuất dữ liệu thành CSV", "success");
   }
 
   // ==================== LANGUAGE FUNCTIONS ====================
@@ -2129,130 +2435,131 @@
     const t = translations[currentLang];
     
     // Update auth section
-    document.getElementById("login-title").innerText = t.login;
-    document.getElementById("login-btn-text").innerText = t.login;
-    document.getElementById("username").placeholder = t.username;
-    document.getElementById("password").placeholder = t.password;
-    document.getElementById("register-link").innerText = t.noAccount;
-    document.getElementById("register-link-text").innerHTML = t.registerLink + ' <span class="kitty-coin"></span>';
+    document.getElementById('login-title').textContent = t.login;
+    document.getElementById('username').placeholder = t.username;
+    document.getElementById('password').placeholder = t.password;
+    document.getElementById('login-btn-text').textContent = t.login;
+    document.getElementById('register-link').textContent = t.noAccount;
+    document.getElementById('register-link-text').textContent = t.registerLink;
     
-    // Update register section
-    document.getElementById("register-title").innerText = t.register;
-    document.getElementById("register-btn-text").innerText = t.register;
-    document.getElementById("new-username").placeholder = t.username;
-    document.getElementById("new-password").placeholder = t.password;
-    document.getElementById("login-link").innerText = t.hasAccount;
-    document.getElementById("login-link-text").innerHTML = t.loginLink + ' <span class="kitty-coin"></span>';
+    document.getElementById('register-title').textContent = t.register;
+    document.getElementById('new-username').placeholder = t.username;
+    document.getElementById('new-password').placeholder = t.password;
+    document.getElementById('register-btn-text').textContent = t.register;
+    document.getElementById('login-link').textContent = t.hasAccount;
+    document.getElementById('login-link-text').textContent = t.loginLink;
     
     // Update app section
-    document.getElementById("app-title").innerHTML = t.appTitle + ' <span class="kitty-coin"></span>';
-    document.getElementById("logout-btn").innerHTML = t.logout + ' <span class="kitty-coin"></span>';
-    document.getElementById("add-transaction-title").innerHTML = t.addTransaction + ' <span class="kitty-coin"></span>';
-    document.getElementById("description").placeholder = t.description;
-    document.getElementById("amount").placeholder = t.amount;
-    document.getElementById("income-option").innerHTML = t.income;
-    document.getElementById("expense-option").innerHTML = t.expense;
-    document.getElementById("add-btn").innerHTML = `<i class="fas fa-plus-circle"></i> ${t.addTransaction} <span class="kitty-coin"></span>`;
-    document.getElementById("history-title").innerHTML = t.transactionHistory + ' <span class="kitty-coin"></span>';
-    document.getElementById("th-date").innerHTML = t.date;
-    document.getElementById("th-description").innerHTML = t.description;
-    document.getElementById("th-category").innerHTML = t.category;
-    document.getElementById("th-type").innerHTML = t.type;
-    document.getElementById("th-amount").innerHTML = t.amount;
-    document.getElementById("th-action").innerHTML = t.action;
-    
-    // Update category options
-    document.getElementById("category-other").innerText = t.categories.other;
-    document.getElementById("category-food").innerText = t.categories.food;
-    document.getElementById("category-shopping").innerText = t.categories.shopping;
-    document.getElementById("category-transport").innerText = t.categories.transport;
-    document.getElementById("category-entertainment").innerText = t.categories.entertainment;
-    document.getElementById("category-salary").innerText = t.categories.salary;
-    document.getElementById("category-investment").innerText = t.categories.investment;
-    
-    // Update filter options
-    document.getElementById("filter-all").innerText = t.all;
-    document.getElementById("filter-income").innerText = t.income;
-    document.getElementById("filter-expense").innerText = t.expense;
-    document.getElementById("filter-category-all").innerText = t.allCategories;
-    document.getElementById("filter-category-food").innerText = t.categories.food;
-    document.getElementById("filter-category-shopping").innerText = t.categories.shopping;
-    document.getElementById("filter-category-transport").innerText = t.categories.transport;
-    document.getElementById("filter-category-entertainment").innerText = t.categories.entertainment;
-    document.getElementById("filter-category-salary").innerText = t.categories.salary;
-    document.getElementById("filter-category-investment").innerText = t.categories.investment;
-    document.getElementById("filter-category-other").innerText = t.categories.other;
-    document.getElementById("search-input").placeholder = t.search;
-    document.getElementById("export-btn").innerHTML = `<i class="fas fa-file-export"></i> ${t.exportCSV} <span class="kitty-coin"></span>`;
-    
-    // Update summary cards
-    document.getElementById("income-title").innerText = t.totalIncome;
-    document.getElementById("expense-title").innerText = t.totalExpense;
-    document.getElementById("balance-title").innerText = t.balance;
-    document.getElementById("chart-title").innerText = t.chartTitle;
-    
-    // Update AI suggestions
-    document.getElementById("ai-suggestions").innerHTML = `
-      <div class="ai-suggestion" onclick="askAI('${t.aiSuggestions.savings}')">💡 ${t.aiSuggestions.savings}</div>
-      <div class="ai-suggestion" onclick="askAI('${t.aiSuggestions.foodAnalysis}')">🍔 ${t.aiSuggestions.foodAnalysis}</div>
-      <div class="ai-suggestion" onclick="askAI('${t.aiSuggestions.categoryAnalysis}')">📊 ${t.aiSuggestions.categoryAnalysis}</div>
-    `;
+    document.getElementById('app-title').textContent = t.appTitle;
+    document.getElementById('logout-btn').textContent = t.logout;
+    document.getElementById('income-title').textContent = t.totalIncome;
+    document.getElementById('expense-title').textContent = t.totalExpense;
+    document.getElementById('balance-title').textContent = t.balance;
+    document.getElementById('chart-title').textContent = t.chartTitle;
+    document.getElementById('add-transaction-title').textContent = t.addTransaction;
+    document.getElementById('description').placeholder = t.description;
+    document.getElementById('amount').placeholder = t.amount;
+    document.getElementById('category').querySelectorAll('option').forEach(opt => {
+      opt.textContent = t.categories[opt.value];
+    });
+    document.getElementById('type').querySelectorAll('option').forEach(opt => {
+      opt.textContent = opt.value === 'income' ? t.income : t.expense;
+    });
+    document.getElementById('date').placeholder = t.date;
+    document.getElementById('add-btn').textContent = t.addTransaction;
+    document.getElementById('search-input').placeholder = t.search;
+    document.getElementById('filter-type').querySelectorAll('option').forEach(opt => {
+      if (opt.value === 'all') opt.textContent = t.all;
+      else if (opt.value === 'income') opt.textContent = t.income;
+      else opt.textContent = t.expense;
+    });
+    document.getElementById('filter-category').querySelectorAll('option').forEach(opt => {
+      if (opt.value === 'all') opt.textContent = t.allCategories;
+      else opt.textContent = t.categories[opt.value];
+    });
+    document.getElementById('history-title').textContent = t.transactionHistory;
+    document.getElementById('th-date').textContent = t.date;
+    document.getElementById('th-description').textContent = t.description;
+    document.getElementById('th-category').textContent = t.category;
+    document.getElementById('th-type').textContent = t.type;
+    document.getElementById('th-amount').textContent = t.amount;
+    document.getElementById('th-action').textContent = t.action;
+    document.getElementById('export-btn').textContent = t.exportCSV;
     
     // Update chart tabs
-    document.getElementById("bar-chart-tab").innerText = t.barChart;
-    document.getElementById("pie-chart-tab").innerText = t.pieChart;
-    document.getElementById("line-chart-tab").innerText = t.lineChart;
+    document.getElementById('bar-chart-tab').textContent = t.barChart;
+    document.getElementById('pie-chart-tab').textContent = t.pieChart;
+    document.getElementById('line-chart-tab').textContent = t.lineChart;
+    
+    // Update modals
+    document.getElementById('edit-title').textContent = t.editTransaction;
+    document.getElementById('edit-description').placeholder = t.description;
+    document.getElementById('edit-amount').placeholder = t.amount;
+    document.getElementById('edit-category').querySelectorAll('option').forEach(opt => {
+      opt.textContent = t.categories[opt.value];
+    });
+    document.getElementById('edit-type').querySelectorAll('option').forEach(opt => {
+      opt.textContent = opt.value === 'income' ? t.income : t.expense;
+    });
+    document.getElementById('edit-date').placeholder = t.date;
+    document.getElementById('save-edit-btn').textContent = t.saveChanges;
     
     // Update budget section
-    document.getElementById("budget-category-food").innerText = t.categories.food;
-    document.getElementById("budget-category-shopping").innerText = t.categories.shopping;
-    document.getElementById("budget-category-transport").innerText = t.categories.transport;
-    document.getElementById("budget-category-entertainment").innerText = t.categories.entertainment;
-    document.getElementById("set-budget-btn").innerText = t.setBudget;
+    document.getElementById('budget-category').querySelectorAll('option').forEach(opt => {
+      opt.textContent = t.categories[opt.value];
+    });
+    document.getElementById('budget-amount').placeholder = t.amount;
+    document.getElementById('set-budget-btn').textContent = t.setBudget;
     
-    // Update edit modal
-    document.getElementById("edit-title").innerText = t.editTransaction;
-    document.getElementById("save-edit-btn").innerHTML = `<i class="fas fa-save"></i> ${t.saveChanges}`;
+    // Update goals section
+    document.getElementById('goal-name').placeholder = t.goals.goalName;
+    document.getElementById('goal-amount').placeholder = t.goals.targetAmount;
+    document.getElementById('goal-deadline').placeholder = t.goals.deadline;
+    document.getElementById('add-goal-btn').textContent = t.goals.addGoal;
+    document.getElementById('goal-modal-title').textContent = t.goals.addSavings;
+    document.getElementById('goal-saved-amount').placeholder = t.goals.addAmount;
+    document.getElementById('save-to-goal-btn').textContent = t.goals.addSavings;
     
-    // If logged in, re-render transactions with new language
+    // Update AI suggestions
+    document.querySelectorAll('.ai-suggestion')[0].textContent = '💡 ' + t.aiSuggestions.savings;
+    document.querySelectorAll('.ai-suggestion')[1].textContent = '🍔 ' + t.aiSuggestions.foodAnalysis;
+    document.querySelectorAll('.ai-suggestion')[2].textContent = '📊 ' + t.aiSuggestions.categoryAnalysis;
+    
+    // Re-render data
     if (currentUser) {
       renderTransactions();
-      updateSummary();
-      renderChart();
+      renderGoals();
       renderBudgetCards();
     }
   }
 
-  // ==================== EVENT LISTENERS ====================
-  document.getElementById('search-input').addEventListener('input', renderTransactions);
-  document.getElementById('filter-type').addEventListener('change', renderTransactions);
-  document.getElementById('filter-category').addEventListener('change', renderTransactions);
-  document.getElementById('filter-month').addEventListener('change', renderTransactions);
-  
-  // Allow pressing Enter in AI chat input
-  document.getElementById('ai-query-input').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-      askAI();
-    }
-  });
-
-  // Close modal when clicking outside
-  window.addEventListener('click', function(event) {
-    if (event.target === document.getElementById('edit-modal')) {
-      closeModal();
-    }
-  });
-
   // ==================== INITIALIZATION ====================
-  // Set default language
-  changeLanguage();
-  
-  // Check if user is already logged in (for demo purposes)
-  if (Object.keys(users).length > 0) {
-    showLogin();
-  } else {
-    showRegister();
-  }
+  document.addEventListener('DOMContentLoaded', function() {
+    // Set up event listeners
+    document.getElementById('search-input').addEventListener('input', renderTransactions);
+    document.getElementById('filter-type').addEventListener('change', renderTransactions);
+    document.getElementById('filter-category').addEventListener('change', renderTransactions);
+    document.getElementById('filter-month').addEventListener('change', renderTransactions);
+    
+    // Set default date for transaction form
+    document.getElementById('date').value = new Date().toISOString().split('T')[0];
+    
+    // Set default month for filter
+    document.getElementById('filter-month').value = getCurrentMonth();
+    
+    // Set up dark mode if enabled
+    if (isDarkMode) {
+      document.body.classList.add('dark-mode');
+      document.getElementById('dark-mode-icon').classList.remove('fa-moon');
+      document.getElementById('dark-mode-icon').classList.add('fa-sun');
+    }
+    
+    // Set language selector to current language
+    document.getElementById('language-select').value = currentLang;
+    
+    // Focus username field on page load
+    document.getElementById('username').focus();
+  });
 </script>
 </body>
 </html>
